@@ -1,0 +1,39 @@
+version: "1.1"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: vfb-postgres
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U "]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: on-failure
+
+  backend:
+    build: .
+    container_name: vfb-backend
+    volumes:
+      - ./:/backend
+    command: >
+      uvicorn app:app
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: on-failure
+
+volumes:
+  postgres_data:
