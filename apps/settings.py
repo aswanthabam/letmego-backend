@@ -8,6 +8,8 @@ class AppConfig(BaseSettings):
     DEBUG: bool = False
     CORS_ORIGINS: list[str] | str
 
+    DATABASE_URL: str
+
     @property
     def cors_origins(self) -> list[str]:
         if isinstance(self.CORS_ORIGINS, str):
