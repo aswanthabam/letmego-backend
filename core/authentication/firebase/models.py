@@ -56,7 +56,7 @@ class DecodedToken(BaseModel):
     iss: str = Field(..., description="Issuer")
     aud: str = Field(..., description="Audience")
     auth_time: int = Field(..., description="Authentication time")
-    user_id: str = Field(..., description="User ID", alias="uid")
+    uid: str = Field(..., description="User ID")
     sub: str = Field(..., description="Subject")
     iat: int = Field(..., description="Issued at")
     exp: int = Field(..., description="Expiration time")
