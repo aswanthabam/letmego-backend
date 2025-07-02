@@ -73,7 +73,7 @@ class DecodedToken(BaseModel):
     custom_claims: Optional[Dict[str, Any]] = Field(None, description="Custom claims")
 
     class Config:
-        allow_population_by_field_name = True
+        validate_by_name = True
 
 
 class CustomTokenRequest(BaseModel):
