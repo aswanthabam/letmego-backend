@@ -2,3 +2,5 @@
 venv
 __pycache__/
 *.pyc
+firebase-secret.json
+logs

@@ -3,7 +3,7 @@ version: "1.1"
 services:
   postgres:
     image: postgres:16
-    container_name: vfb-postgres
+    container_name: letmego-postgres
     env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -18,7 +18,7 @@ services:
 
   backend:
     build: .
-    container_name: vfb-backend
+    container_name: letmego-backend
     volumes:
       - ./:/backend
     command: >

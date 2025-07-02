@@ -1,4 +1,4 @@
-# 🚗 Vehicle Finder Backend (VFB)
+# 🚗 Let-Me-Go Backend
 
 This is the backend service for the **Vehicle Finder** application — a system designed to help people report vehicles found with issues (like headlights left on, flat tires, etc.) and notify their respective owners.
 

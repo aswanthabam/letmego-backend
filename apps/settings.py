@@ -8,6 +8,12 @@ class AppConfig(BaseSettings):
     DEBUG: bool = False
     CORS_ORIGINS: list[str] | str
 
+    S3_SECRET_KEY: str
+    S3_ACCESS_KEY: str
+    S3_BUCKET: str
+    S3_BASE_PATH: str
+    DATABASE_URL_SYNC: str
+
     DATABASE_URL: str
 
     @property
