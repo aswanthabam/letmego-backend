@@ -1,8 +1,6 @@
 from io import BytesIO
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 import pandas as pd
-
-from app.response import CustomHTTPException
 
 
 async def read_excel(file: UploadFile) -> pd.DataFrame:
@@ -14,5 +12,5 @@ async def read_excel(file: UploadFile) -> pd.DataFrame:
     elif file.filename.endswith((".xls", ".xlsx")):
         df = pd.read_excel(BytesIO(contents))
     else:
-        raise CustomHTTPException(400, "Unsupportedd file format")
+        raise HTTPException(400, "Unsupportedd file format")
     return df
