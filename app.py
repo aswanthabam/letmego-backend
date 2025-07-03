@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import traceback
 import uuid
 from fastapi import Request
 from fastapi import FastAPI
@@ -7,6 +8,7 @@ from fastapi.responses import ORJSONResponse
 from pydantic import ValidationError
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
+from sqlalchemy.exc import StatementError, IntegrityError
 
 from core.exceptions.core import AbstractException
 from core.response.response_class import CustomORJSONResponse
@@ -83,6 +85,42 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
             "message": "Error Processing Request",
             "error_code": "VALIDATION_ERROR",
             "errors": {"msg": f"{e.get('loc')} {e.get('msg')}" for e in exc.errors()},
+        },
+        status_code=500,
+    )
+
+
+@app.exception_handler(StatementError)
+async def statement_error_handler(request: Request, exc: StatementError):
+    if isinstance(exc.orig, AbstractException):
+        raise exc.orig
+    else:
+        raise exc
+
+
+@app.exception_handler(IntegrityError)
+async def statement_error_handler(request: Request, exc: IntegrityError):
+    traceback.print_exc()
+    return ORJSONResponse(
+        {
+            "message": "Integrity Error",
+            "error_code": "INTEGRITY_ERROR",
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def http_exception_handler(request: Request, exc: Exception):
+    track_id = str(uuid.uuid4())
+    # try:
+    #     await notify_error(request, exc, track_id)
+    # except Exception as e:
+    #     print("Error while sending error notification")
+    #     traceback.print_exc()
+    return ORJSONResponse(
+        {
+            "message": "Error Processing Request",
+            "error_code": "INTERNAL_SERVER_ERROR",
         },
         status_code=500,
     )

@@ -1,9 +1,10 @@
 # apps/vehicle/service.py
+from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import IntegrityError
 from typing import Optional, List, Dict, Any
-from uuid import UUID
+from uuid import UUID, uuid4
 from fastapi import UploadFile
 import io
 
@@ -13,6 +14,9 @@ from core.exceptions.authentication import (
 )
 from core.exceptions.request import (
     InvalidRequestException,
+)
+from core.storage.sqlalchemy.inputs.file import (
+    InputFile,
 )  # Replace with your actual import path
 
 
@@ -57,11 +61,12 @@ async def create_vehicle(
 
         # Handle image upload
         if image:
-            content = io.BytesIO(await image.read())
-            vehicle.image = {
-                "bytes": content,
-                "filename": image.filename,
-            }
+            vehicle.image = InputFile(
+                content=await image.read(),
+                filename=image.filename,
+                unique_filename=True,
+                prefix_date=True,
+            )
 
         session.add(vehicle)
         await session.commit()
@@ -211,11 +216,12 @@ async def update_vehicle(
 
         # Handle image update
         if image:
-            content = io.BytesIO(await image.read())
-            update_data["image"] = {
-                "bytes": content,
-                "filename": image.filename,
-            }
+            update_data["image"] = InputFile(
+                content=await image.read(),
+                filename=image.filename,
+                unique_filename=True,
+                prefix_date=True,
+            )
 
         # Perform the update
         stmt = update(Vehicle).where(Vehicle.id == vehicle_id).values(**update_data)

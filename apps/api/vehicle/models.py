@@ -1,6 +1,5 @@
 # apps/vehicle/models.py
 
-from core.storage.fields import S3ImageField
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UUID, Enum
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
@@ -8,6 +7,9 @@ import enum
 
 from core.db.base import AbstractSQLModel
 from core.db.mixins import SoftDeleteMixin, TimestampsMixin
+from core.storage.sqlalchemy.fields.imagefield import ImageField
+
+from apps.storage import default_storage
 
 
 # -------------------------
@@ -57,7 +59,8 @@ class Vehicle(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     brand = Column(String(50), nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     image = Column(
-        S3ImageField(
+        ImageField(
+            storage=default_storage,
             upload_to="vehicle/images/",
             variations={
                 "thumbnail": {"width": 150, "height": 150},
