@@ -1,10 +1,13 @@
+# apps/vehicle/service.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from sqlalchemy.exc import IntegrityError
 from typing import Optional, List, Dict, Any
 from uuid import UUID
+from fastapi import UploadFile
+import io
 
-from apps.api.vehicle.models import Vehicle
+from apps.api.vehicle.models import Vehicle, VehicleType
 from core.exceptions.authentication import (
     ForbiddenException,
 )
@@ -18,6 +21,9 @@ async def create_vehicle(
     vehicle_number: str,
     user_id: UUID,
     name: Optional[str] = None,
+    vehicle_type: Optional[VehicleType] = None,
+    brand: Optional[str] = None,
+    image: Optional[UploadFile] = None,
     is_verified: bool = False,
 ) -> Vehicle:
     """
@@ -28,6 +34,9 @@ async def create_vehicle(
         vehicle_number: Unique vehicle number
         user_id: UUID of the vehicle owner
         name: Optional vehicle name
+        vehicle_type: Type of vehicle from VehicleType enum
+        brand: Vehicle brand
+        image: Optional uploaded image file
         is_verified: Vehicle verification status (default: False)
 
     Returns:
@@ -40,9 +49,19 @@ async def create_vehicle(
         vehicle = Vehicle(
             vehicle_number=vehicle_number,
             name=name,
+            vehicle_type=vehicle_type,
+            brand=brand,
             user_id=user_id,
             is_verified=is_verified,
         )
+
+        # Handle image upload
+        if image:
+            content = io.BytesIO(await image.read())
+            vehicle.image = {
+                "bytes": content,
+                "filename": image.filename,
+            }
 
         session.add(vehicle)
         await session.commit()
@@ -61,12 +80,12 @@ async def get_vehicle(
     include_deleted: bool = False,
 ) -> Optional[Vehicle]:
     """
-    Get a single vehicle by ID or vehicle number.
+    Get a single vehicle by ID.
 
     Args:
         session: AsyncSession database connection
+        user_id: UUID of the vehicle owner
         vehicle_id: UUID of the vehicle
-        vehicle_number: Vehicle number to search for
         include_deleted: Whether to include soft-deleted records
 
     Returns:
@@ -75,6 +94,9 @@ async def get_vehicle(
     query = select(Vehicle)
 
     query = query.where(Vehicle.id == vehicle_id, Vehicle.user_id == user_id)
+
+    if not include_deleted:
+        query = query.where(Vehicle.deleted_at.is_(None))
 
     result = await session.execute(query)
     vehicle = result.scalar()
@@ -88,6 +110,8 @@ async def get_vehicle(
 async def get_vehicles(
     session: AsyncSession,
     user_id: Optional[UUID] = None,
+    vehicle_type: Optional[VehicleType] = None,
+    brand: Optional[str] = None,
     is_verified: Optional[bool] = None,
     limit: Optional[int] = None,
     offset: int = 0,
@@ -98,8 +122,9 @@ async def get_vehicles(
     Args:
         session: AsyncSession database connection
         user_id: Filter by owner user ID
+        vehicle_type: Filter by vehicle type
+        brand: Filter by brand
         is_verified: Filter by verification status
-        include_deleted: Whether to include soft-deleted records
         limit: Maximum number of records to return
         offset: Number of records to skip
 
@@ -112,8 +137,17 @@ async def get_vehicles(
     if user_id:
         query = query.where(Vehicle.user_id == user_id)
 
+    if vehicle_type:
+        query = query.where(Vehicle.vehicle_type == vehicle_type)
+
+    if brand:
+        query = query.where(Vehicle.brand.ilike(f"%{brand}%"))
+
     if is_verified is not None:
         query = query.where(Vehicle.is_verified == is_verified)
+
+    # Only include non-deleted records
+    query = query.where(Vehicle.deleted_at.is_(None))
 
     # Apply pagination
     if offset > 0:
@@ -132,6 +166,9 @@ async def update_vehicle(
     user_id: UUID,
     vehicle_number: str,
     name: Optional[str] = None,
+    vehicle_type: Optional[VehicleType] = None,
+    brand: Optional[str] = None,
+    image: Optional[UploadFile] = None,
 ) -> Optional[Vehicle]:
     """
     Update a vehicle record.
@@ -139,7 +176,12 @@ async def update_vehicle(
     Args:
         session: AsyncSession database connection
         vehicle_id: UUID of the vehicle to update
-        update_data: Dictionary containing fields to update
+        user_id: UUID of the vehicle owner
+        vehicle_number: Updated vehicle number
+        name: Updated vehicle name
+        vehicle_type: Updated vehicle type
+        brand: Updated vehicle brand
+        image: Optional new image file
 
     Returns:
         Vehicle or None: Updated vehicle instance or None if not found
@@ -149,7 +191,9 @@ async def update_vehicle(
     """
     try:
         # First check if the vehicle exists and is not soft-deleted
-        existing_vehicle = await get_vehicle(session, vehicle_id=vehicle_id)
+        existing_vehicle = await get_vehicle(
+            session, user_id=user_id, vehicle_id=vehicle_id
+        )
         if not existing_vehicle:
             return None
         if existing_vehicle.user_id != user_id:
@@ -157,12 +201,24 @@ async def update_vehicle(
                 "You do not have permission to update this vehicle."
             )
 
+        # Prepare update data
+        update_data = {
+            "vehicle_number": vehicle_number,
+            "name": name,
+            "vehicle_type": vehicle_type,
+            "brand": brand,
+        }
+
+        # Handle image update
+        if image:
+            content = io.BytesIO(await image.read())
+            update_data["image"] = {
+                "bytes": content,
+                "filename": image.filename,
+            }
+
         # Perform the update
-        stmt = (
-            update(Vehicle)
-            .where(Vehicle.id == vehicle_id)
-            .values(vehicle_number=vehicle_number, name=name)
-        )
+        stmt = update(Vehicle).where(Vehicle.id == vehicle_id).values(**update_data)
 
         await session.execute(stmt)
         await session.commit()
@@ -185,7 +241,7 @@ async def delete_vehicle(
     Args:
         session: AsyncSession database connection
         vehicle_id: UUID of the vehicle to delete
-        soft_delete: Whether to perform soft delete (default: True)
+        user_id: UUID of the vehicle owner
 
     Returns:
         bool: True if deletion was successful, False if vehicle not found
@@ -257,6 +313,53 @@ async def get_vehicles_with_reports(
 
     if not include_deleted:
         query = query.where(Vehicle.deleted_at.is_(None))
+
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+async def search_vehicles(
+    session: AsyncSession,
+    search_term: str,
+    user_id: Optional[UUID] = None,
+    limit: Optional[int] = None,
+    offset: int = 0,
+) -> List[Vehicle]:
+    """
+    Search vehicles by vehicle number, name, or brand.
+
+    Args:
+        session: AsyncSession database connection
+        search_term: Search term to match against vehicle fields
+        user_id: Optional filter by owner user ID
+        limit: Maximum number of records to return
+        offset: Number of records to skip
+
+    Returns:
+        List[Vehicle]: List of matching vehicle instances
+    """
+    query = select(Vehicle)
+
+    # Search in vehicle_number, name, and brand
+    search_filter = (
+        Vehicle.vehicle_number.ilike(f"%{search_term}%")
+        | Vehicle.name.ilike(f"%{search_term}%")
+        | Vehicle.brand.ilike(f"%{search_term}%")
+    )
+    query = query.where(search_filter)
+
+    if user_id:
+        query = query.where(Vehicle.user_id == user_id)
+
+    # Only include non-deleted records
+    query = query.where(Vehicle.deleted_at.is_(None))
+
+    # Apply pagination
+    if offset > 0:
+        query = query.offset(offset)
+
+    if limit:
+        query = query.limit(limit)
 
     result = await session.execute(query)
     return result.scalars().all()

@@ -35,6 +35,7 @@ class User(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         ),
         nullable=True,
     )
+    company_name = Column(String(100), nullable=True)
 
     vehicles = relationship("Vehicle", back_populates="owner")
     reports = relationship("VehicleReport", back_populates="reporter")

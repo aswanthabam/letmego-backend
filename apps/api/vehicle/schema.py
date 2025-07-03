@@ -1,9 +1,12 @@
+# apps/vehicle/schema.py
 from datetime import datetime
 from uuid import UUID
 from pydantic import Field, field_validator
 import re
+from typing import Optional
 
 from core.response.models import CustomBaseModel
+from apps.api.vehicle.models import VehicleType
 
 
 class VehicleValidatorMixin:
@@ -39,6 +42,9 @@ class VehicleResponse(CustomBaseModel):
         min_length=1,
         max_length=20,
     )
+    vehicle_type: VehicleType | None = Field(None)
+    brand: str | None = Field(None)
+    image: dict | None = Field(None)  # This will contain the S3 image field data
     is_verified: bool = Field(False)
     created_at: datetime = Field(...)
     updated_at: datetime = Field(...)
@@ -51,6 +57,8 @@ class CreateVehicleRequest(CustomBaseModel):
         min_length=1,
         max_length=20,
     )
+    vehicle_type: VehicleType | None = Field(None)
+    brand: str | None = Field(None)
 
 
 class UpdateVehicleRequest(CustomBaseModel):
@@ -60,3 +68,11 @@ class UpdateVehicleRequest(CustomBaseModel):
         min_length=1,
         max_length=20,
     )
+    vehicle_type: VehicleType | None = Field(None)
+    brand: str | None = Field(None)
+
+
+class VehicleTypeResponse(CustomBaseModel):
+    """Response model for vehicle type choices"""
+    value: str
+    display_name: str
