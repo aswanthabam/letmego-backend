@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 firebase-secret.json
 logs
+media

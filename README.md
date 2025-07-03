@@ -15,6 +15,7 @@ When someone notices a vehicle in a parking lot or on the road with a potential 
 - **Framework**: \[FastAPI]
 - **Database**: \[PostgreSQL]
 - **Docker**: Containerized setup for development and production
+- **Authentication**: Firebase Auth
 
 ---
 
@@ -23,8 +24,8 @@ When someone notices a vehicle in a parking lot or on the road with a potential 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/aswanthabam/vehicle-finder-backend.git
-cd vehicle-finder-backend
+git clone https://github.com/aswanthabam/letmego-backend.git
+cd letmego-backend
 ```
 
 ### 2. Create Environment Configuration

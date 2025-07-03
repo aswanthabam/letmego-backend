@@ -4,7 +4,9 @@ import sqlalchemy as sa
 
 from core.db.base import AbstractSQLModel
 from core.db.mixins import SoftDeleteMixin, TimestampsMixin
-from core.storage.fields import S3ImageField
+from core.storage.sqlalchemy.fields.imagefield import ImageField
+
+from apps.storage import default_storage
 
 
 # -------------------------
@@ -25,7 +27,8 @@ class User(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     email_verified = Column(Boolean, default=False)
     phone_number = Column(String(120), nullable=True)
     profile_picture = Column(
-        S3ImageField(
+        ImageField(
+            storage=default_storage,
             upload_to="user/profile_picture/",
             variations={
                 "thumbnail": {"width": 150, "height": 150},
@@ -35,6 +38,7 @@ class User(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         ),
         nullable=True,
     )
+    company_name = Column(String(100), nullable=True)
 
     vehicles = relationship("Vehicle", back_populates="owner")
     reports = relationship("VehicleReport", back_populates="reporter")

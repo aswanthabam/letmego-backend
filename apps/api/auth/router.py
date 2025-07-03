@@ -9,7 +9,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/authenticate", summary="Authenticate user")
-async def authenticate_user(
+async def authenticate_user_endpoint(
     session: SessionDep, decoded_token: FirebaseAuthDependency
 ) -> UserDetailsResponse:
     """
