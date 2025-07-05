@@ -37,7 +37,7 @@ class FileField(AbstractFileField):
 
     def __init__(
         self,
-        storage,
+        storage=None,
         upload_to="uploads",
         max_size: int = 50 * 1024 * 1024,  # 50MB default
         allowed_extensions: Optional[list[str]] = None,

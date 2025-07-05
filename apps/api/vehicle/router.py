@@ -1,27 +1,19 @@
 # apps/vehicle/router.py
 from typing import List, Optional
 from fastapi import APIRouter, File, UploadFile, Form
-from fastapi.params import Depends
 
 from apps.api.auth.dependency import UserDependency
-from core.db.core import SessionDep
+from apps.api.vehicle.service import VehicleServiceDependency
 from apps.api.vehicle.models import VehicleType
 from apps.api.vehicle.schema import (
-    CreateVehicleRequest,
-    UpdateVehicleRequest,
     VehicleResponse,
     VehicleTypeResponse,
 )
-from apps.api.vehicle.service import (
-    create_vehicle,
-    get_vehicle,
-    get_vehicles,
-    update_vehicle,
-    delete_vehicle,
-)
+from core.response.models import MessageResponse
 
 router = APIRouter(
     prefix="/vehicle",
+    tags=["Vehicle"],
 )
 
 
@@ -35,16 +27,15 @@ async def get_vehicle_types() -> List[VehicleTypeResponse]:
 
 @router.post("/create", description="Create a new vehicle")
 async def create_vehicle_endpoint(
-    session: SessionDep,
     user: UserDependency,
+    vehicle_service: VehicleServiceDependency,
     name: str = Form(None),
     vehicle_number: str = Form(...),
     vehicle_type: VehicleType = Form(None),
     brand: str = Form(None),
     image: Optional[UploadFile] = File(None),
 ) -> VehicleResponse:
-    vehicle = await create_vehicle(
-        session=session,
+    vehicle = await vehicle_service.create_vehicle(
         vehicle_number=vehicle_number,
         user_id=user.id,
         name=name,
@@ -58,8 +49,8 @@ async def create_vehicle_endpoint(
 
 @router.put("/update/{id}", description="Update an existing vehicle")
 async def update_vehicle_endpoint(
-    session: SessionDep,
     user: UserDependency,
+    vehicle_service: VehicleServiceDependency,
     id: str,
     name: str = Form(None),
     vehicle_number: str = Form(...),
@@ -67,8 +58,7 @@ async def update_vehicle_endpoint(
     brand: str = Form(None),
     image: UploadFile = File(None),
 ) -> VehicleResponse:
-    vehicle = await update_vehicle(
-        session=session,
+    vehicle = await vehicle_service.update_vehicle(
         vehicle_id=id,
         user_id=user.id,
         vehicle_number=vehicle_number,
@@ -82,19 +72,21 @@ async def update_vehicle_endpoint(
 
 @router.get("/get/{id}", description="Get vehicle details by ID")
 async def get_vehicle_endpoint(
-    session: SessionDep, user: UserDependency, id: str
+    vehicle_service: VehicleServiceDependency, user: UserDependency, id: str
 ) -> VehicleResponse:
-    return await get_vehicle(session=session, vehicle_id=id, user_id=user.id)
+    return await vehicle_service.get_vehicle(vehicle_id=id, user_id=user.id)
 
 
 @router.get("/list", description="List vehicles")
 async def list_vehicles_endpoint(
-    session: SessionDep, user: UserDependency
+    vehicle_service: VehicleServiceDependency, user: UserDependency
 ) -> List[VehicleResponse]:
-    return await get_vehicles(session=session, user_id=user.id)
+    return await vehicle_service.get_vehicles(user_id=user.id)
 
 
 @router.delete("/delete/{id}", description="Delete vehicle")
-async def delete_vehicle_endpoint(session: SessionDep, user: UserDependency, id: str):
-    await delete_vehicle(session=session, vehicle_id=id, user_id=user.id)
-    return {}
+async def delete_vehicle_endpoint(
+    vehicle_service: VehicleServiceDependency, user: UserDependency, id: str
+) -> MessageResponse:
+    await vehicle_service.delete_vehicle(vehicle_id=id, user_id=user.id)
+    return {"message": "Vehicle deleted successfully"}

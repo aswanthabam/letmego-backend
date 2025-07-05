@@ -10,7 +10,9 @@ from core.db.registry import *
 
 engine = create_async_engine(settings.DATABASE_URL)
 
-AsyncSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
+AsyncSessionLocal = async_sessionmaker(
+    autocommit=False, autoflush=False, bind=engine, expire_on_commit=False
+)
 
 
 async def get_session():

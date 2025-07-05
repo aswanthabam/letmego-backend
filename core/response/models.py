@@ -44,3 +44,11 @@ class CustomBaseModel(BaseModel):
                 value = value.astimezone(IST)
             return value.isoformat()
         return value
+
+
+class MessageResponse(BaseModel):
+    """
+    Base model for all message responses.
+    """
+
+    message: str
