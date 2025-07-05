@@ -1,6 +1,7 @@
 from typing import Annotated
 from fastapi import Depends
 from sqlalchemy import select
+from sqlalchemy.orm import load_only
 
 from apps.api.user.models import User
 from core.db.core import SessionDep
@@ -13,7 +14,9 @@ from core.authentication.firebase.dependency import (
 async def get_current_user(
     session: SessionDep, decoded_token: FirebaseAuthDependency
 ) -> User:
-    user = await session.scalar(select(User).where(User.uid == decoded_token.uid))
+    user = await session.scalar(
+        select(User).where(User.uid == decoded_token.uid).options(load_only(User.id))
+    )
     if not user:
         raise ForbiddenException(
             "User not found or not authenticated.",

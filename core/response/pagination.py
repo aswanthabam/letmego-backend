@@ -1,6 +1,5 @@
 from typing import Annotated, Any, Generic, TypeVar, List, Type, Optional, Dict
 from urllib.parse import urlencode
-from bson import ObjectId
 from pydantic import BaseModel
 from fastapi import Depends, Query as GetQuery, Request
 from fastapi.encoders import jsonable_encoder
@@ -27,6 +26,7 @@ class PaginatedResponse(BaseModel, Generic[M]):
     limit: int
     offset: int
     next: Optional[str] = None
+    previous: Optional[str] = None
     items: List[M]
 
 
@@ -51,6 +51,8 @@ def paginated_response(
     has_next = len(result) > limit
     paginated_result = result[:limit] if has_next else result
 
+    has_previous = offset > 0
+
     # Prepare next URL if we have more results
     if has_next:
         query_params = dict(request.query_params)
@@ -58,7 +60,15 @@ def paginated_response(
         next_url = f"{request.url.path}?{urlencode(query_params)}"
     else:
         next_url = None
-    model_dicts = jsonable_encoder(paginated_result, custom_encoder={ObjectId: str})
+
+    if has_previous:
+        query_params = dict(request.query_params)
+        query_params["offset"] = str(max(0, offset - limit))
+        previous_url = f"{request.url.path}?{urlencode(query_params)}"
+    else:
+        previous_url = None
+
+    model_dicts = jsonable_encoder(paginated_result)
 
     validated_items = [schema.model_validate(item_dict) for item_dict in model_dicts]
 
@@ -66,6 +76,7 @@ def paginated_response(
         limit=limit,
         offset=offset,
         next=next_url,
+        previous=previous_url,
         items=validated_items,
     )
 

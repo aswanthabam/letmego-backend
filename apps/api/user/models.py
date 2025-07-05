@@ -1,12 +1,19 @@
-from sqlalchemy import Column, String, Boolean, UUID
+from sqlalchemy import Column, Enum, String, Boolean, UUID
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
+from enum import Enum as PyEnum
 
 from core.db.base import AbstractSQLModel
 from core.db.mixins import SoftDeleteMixin, TimestampsMixin
 from core.storage.sqlalchemy.fields.imagefield import ImageField
 
 from apps.storage import default_storage
+
+
+class PrivacyPreference(PyEnum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+    ANONYMOUS = "anonymous"
 
 
 # -------------------------
@@ -39,6 +46,11 @@ class User(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         nullable=True,
     )
     company_name = Column(String(100), nullable=True)
+    privacy_preference = Column(
+        Enum(PrivacyPreference),
+        default=PrivacyPreference.PUBLIC,
+        nullable=False,
+    )
 
     vehicles = relationship("Vehicle", back_populates="owner")
     reports = relationship("VehicleReport", back_populates="reporter")

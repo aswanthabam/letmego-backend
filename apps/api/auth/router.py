@@ -1,20 +1,19 @@
 from fastapi import APIRouter
 
-from apps.api.auth.dependency import FirebaseAuthDependency, UserDependency
+from apps.api.auth.dependency import FirebaseAuthDependency
 from apps.api.auth.schema import UserDetailsResponse
-from apps.api.auth.service import firebase_authenticate, firebase_user_data
-from core.db.core import SessionDep
+from apps.api.auth.service import AuthServiceDependency
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/authenticate", summary="Authenticate user")
 async def authenticate_user_endpoint(
-    session: SessionDep, decoded_token: FirebaseAuthDependency
+    auth_service: AuthServiceDependency, decoded_token: FirebaseAuthDependency
 ) -> UserDetailsResponse:
     """
     Endpoint to authenticate a user.
     This is a placeholder endpoint and should be implemented with actual authentication logic.
     """
-    user = await firebase_authenticate(session=session, uid=decoded_token.uid)
+    user = await auth_service.firebase_authenticate(uid=decoded_token.uid)
     return user

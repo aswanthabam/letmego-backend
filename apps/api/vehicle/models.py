@@ -74,3 +74,11 @@ class Vehicle(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
 
     owner = relationship("User", back_populates="vehicles")
     reports = relationship("VehicleReport", back_populates="vehicle")
+
+    @property
+    def owner_name(self) -> str:
+        if not self.owner:
+            return "Unknown Owner"
+        if self.owner.privacy_preference.value == "anonymous":
+            return "Anonymous"
+        return self.owner.fullname

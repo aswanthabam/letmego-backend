@@ -129,6 +129,6 @@ async def http_exception_handler(request: Request, exc: Exception):
 app.add_exception_handler(401, custom_auth_exception_handler)
 
 
-@app.get("/api/")
+@app.get("/api/ping", summary="Ping the API", tags=["Health Check"])
 def root():
     return HTMLResponse(content="<html><h1>Haa shit! My Code is working.</h1></html>")

@@ -6,6 +6,7 @@ from core.db.core import SessionDep
 
 router = APIRouter(
     prefix="/user",
+    tags=["User"],
 )
 
 
