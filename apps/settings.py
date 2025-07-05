@@ -15,6 +15,7 @@ class AppConfig(BaseSettings):
     DATABASE_URL_SYNC: str
 
     DATABASE_URL: str
+    STORAGE_URL_PREFIX: str
 
     @property
     def cors_origins(self) -> list[str]:
