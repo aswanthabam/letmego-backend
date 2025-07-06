@@ -40,7 +40,7 @@ async def create_vehicle_endpoint(
         vehicle_number=vehicle_number,
         user_id=user.id,
         name=name,
-        vehicle_type=vehicle_type,
+        vehicle_type=vehicle_type.value if vehicle_type else None,
         brand=brand,
         image=image,
         is_verified=False,
@@ -64,7 +64,7 @@ async def update_vehicle_endpoint(
         user_id=user.id,
         vehicle_number=vehicle_number,
         name=name,
-        vehicle_type=vehicle_type,
+        vehicle_type=vehicle_type.value if vehicle_type else None,
         brand=brand,
         image=image,
     )
@@ -80,9 +80,13 @@ async def get_vehicle_endpoint(
 
 @router.get("/list", description="List vehicles")
 async def list_vehicles_endpoint(
-    vehicle_service: VehicleServiceDependency, user: UserDependency
+    vehicle_service: VehicleServiceDependency,
+    user: UserDependency,
+    vehicle_type: Optional[VehicleType] = None,
 ) -> List[VehicleResponse]:
-    return await vehicle_service.get_vehicles(user_id=user.id)
+    return await vehicle_service.get_vehicles(
+        user_id=user.id, vehicle_type=vehicle_type.value if vehicle_type else None
+    )
 
 
 @router.delete("/delete/{id}", description="Delete vehicle")

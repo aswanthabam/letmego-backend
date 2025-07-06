@@ -31,7 +31,7 @@ class VehicleService(AbstractService):
         vehicle_number: str,
         user_id: UUID,
         name: Optional[str] = None,
-        vehicle_type: Optional[VehicleType] = None,
+        vehicle_type: str = None,
         brand: Optional[str] = None,
         image: Optional[UploadFile] = None,
         is_verified: bool = False,
@@ -119,7 +119,7 @@ class VehicleService(AbstractService):
     async def get_vehicles(
         self,
         user_id: Optional[UUID] = None,
-        vehicle_type: Optional[VehicleType] = None,
+        vehicle_type: str = None,
         brand: Optional[str] = None,
         is_verified: Optional[bool] = None,
         limit: Optional[int] = None,
@@ -174,7 +174,7 @@ class VehicleService(AbstractService):
         user_id: UUID,
         vehicle_number: str,
         name: Optional[str] = None,
-        vehicle_type: Optional[VehicleType] = None,
+        vehicle_type: str = None,
         brand: Optional[str] = None,
         image: Optional[UploadFile] = None,
     ) -> Optional[Vehicle]:
