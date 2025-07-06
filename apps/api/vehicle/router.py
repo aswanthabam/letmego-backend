@@ -4,9 +4,9 @@ from fastapi import APIRouter, File, UploadFile, Form
 
 from apps.api.auth.dependency import UserDependency
 from apps.api.vehicle.service import VehicleServiceDependency
-from apps.api.vehicle.models import VehicleType
 from apps.api.vehicle.schema import (
     VehicleResponse,
+    VehicleType,
     VehicleTypeResponse,
 )
 from core.response.models import MessageResponse
@@ -21,7 +21,8 @@ router = APIRouter(
 async def get_vehicle_types() -> List[VehicleTypeResponse]:
     """Get all available vehicle types"""
     return [
-        VehicleTypeResponse(value=vt.value, display_name=vt.value) for vt in VehicleType
+        VehicleTypeResponse(value=vt.value, display_name=vt.display_text)
+        for vt in VehicleType
     ]
 
 

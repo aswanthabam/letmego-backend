@@ -8,7 +8,8 @@ from uuid import UUID, uuid4
 from fastapi import UploadFile
 import io
 
-from apps.api.vehicle.models import Vehicle, VehicleType
+from apps.api.vehicle.models import Vehicle
+from apps.api.vehicle.schema import VehicleType
 from core.architecture.service import AbstractService
 from core.exceptions.authentication import (
     ForbiddenException,

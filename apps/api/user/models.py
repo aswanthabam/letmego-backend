@@ -47,7 +47,7 @@ class User(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     )
     company_name = Column(String(100), nullable=True)
     privacy_preference = Column(
-        Enum(PrivacyPreference),
+        String(20),
         default=PrivacyPreference.PUBLIC,
         nullable=False,
     )

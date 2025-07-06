@@ -5,6 +5,8 @@ from enum import Enum  # Import Enum
 
 from pydantic import BaseModel, Field
 
+from apps.api.user.schema import UserPrivacyWrapper
+
 
 # Enums for statuses
 class ReportStatusEnum(str, Enum):
@@ -52,9 +54,10 @@ class VehicleReportMarkResolved(BaseModel):
 # --- Response Schemas ---
 
 
-class UserMin(BaseModel):
+class UserMin(UserPrivacyWrapper):
     id: UUID
-    fullname: str
+    fullname: str | None = None
+    email: str | None = None
     profile_picture: Optional[dict] = None
     company_name: Optional[str] = None
 
@@ -111,9 +114,9 @@ class VehicleReportDetail(BaseModel):
     id: UUID
     report_number: int
     vehicle: VehicleDetail
-    user_id: UUID
     notes: Optional[str]
     current_status: str
+    reporter: UserMin
     created_at: datetime
     updated_at: datetime
     images: List[VehicleReportImageMin] = []

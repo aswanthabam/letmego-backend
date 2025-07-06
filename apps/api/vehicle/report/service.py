@@ -204,9 +204,8 @@ class ReportService(AbstractService):
             .where(VehicleReport.id == report_id)
             .options(selectinload(VehicleReport.images))
             .options(selectinload(VehicleReport.status_logs))
-            .options(
-                joinedload(VehicleReport.vehicle).joinedload(Vehicle.owner)
-            )  # To check vehicle owner
+            .options(joinedload(VehicleReport.vehicle).joinedload(Vehicle.owner))
+            .options(joinedload(VehicleReport.reporter))
         )
         result = await self.session.execute(stmt)
         report = result.scalars().first()
