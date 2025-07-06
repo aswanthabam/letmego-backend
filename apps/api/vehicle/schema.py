@@ -10,6 +10,27 @@ from core.response.models import CustomBaseModel
 
 from enum import Enum
 
+vehicle_type_display_text = {
+    "car": "Car",
+    "motorcycle": "Motorcycle",
+    "truck": "Truck",
+    "bus": "Bus",
+    "van": "Van",
+    "suv": "SUV",
+    "pickup_truck": "Pickup Truck",
+    "scooter": "Scooter",
+    "bicycle": "Bicycle",
+    "trailer": "Trailer",
+    "rickshaw": "Rickshaw",
+    "auto_rickshaw": "Auto Rickshaw",
+    "tractor": "Tractor",
+    "ambulance": "Ambulance",
+    "fire_truck": "Fire Truck",
+    "police_vehicle": "Police Vehicle",
+    "taxi": "Taxi",
+    "other": "Other",
+}
+
 
 class VehicleType(Enum):
     CAR = "car"
@@ -31,30 +52,9 @@ class VehicleType(Enum):
     TAXI = "taxi"
     OTHER = "other"
 
-    _display_map = {
-        "car": "Car",
-        "motorcycle": "Motorcycle",
-        "truck": "Truck",
-        "bus": "Bus",
-        "van": "Van",
-        "suv": "SUV",
-        "pickup_truck": "Pickup Truck",
-        "scooter": "Scooter",
-        "bicycle": "Bicycle",
-        "trailer": "Trailer",
-        "rickshaw": "Rickshaw",
-        "auto_rickshaw": "Auto Rickshaw",
-        "tractor": "Tractor",
-        "ambulance": "Ambulance",
-        "fire_truck": "Fire Truck",
-        "police_vehicle": "Police Vehicle",
-        "taxi": "Taxi",
-        "other": "Other",
-    }
-
     @property
     def display_text(self) -> str:
-        return self._display_map.value[self.value]
+        return vehicle_type_display_text[self.value]
 
 
 class VehicleValidatorMixin:
