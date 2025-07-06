@@ -7,7 +7,7 @@ from apps.api.auth.service import AuthServiceDependency
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/authenticate", summary="Authenticate user")
+@router.post("/firebase/register", summary="Register a new user using firebase")
 async def authenticate_user_endpoint(
     auth_service: AuthServiceDependency, decoded_token: FirebaseAuthDependency
 ) -> UserDetailsResponse:
