@@ -28,7 +28,7 @@ on:
         required: false
         default: false
         type: boolean
-      restart_all:
+      restart_and_rebuild:
         description: "Restart and rebuild all containers"
         required: false
         default: false
@@ -45,6 +45,11 @@ on:
         type: boolean
       build_backend:
         description: "Build backend service"
+        required: false
+        default: false
+        type: boolean
+      restart_all:
+        description: "Restart all services"
         required: false
         default: false
         type: boolean
@@ -70,12 +75,13 @@ jobs:
           INSTALL_REQUIREMENTS: ${{ github.event.inputs.install_requirements }}
           RESTART_BACKEND: ${{ github.event.inputs.restart_backend }}
           RESTART_DATABASE: ${{ github.event.inputs.restart_database }}
-          RESTART_ALL: ${{ github.event.inputs.restart_all }}
+          RESTART_AND_REBUILD: ${{ github.event.inputs.restart_and_rebuild }}
           MIGRATE: ${{ github.event.inputs.migrate }}
           SYNC_CODE: ${{ github.event.inputs.sync_code }}
           SYNC_ENV: ${{ github.event.inputs.sync_env }}
           UP_BACKEND: ${{ github.event.inputs.up_backend }}
           BUILD_BACKEND: ${{ github.event.inputs.build_backend }}
+          RESTART_ALL: ${{ github.event.inputs.restart_all }}
           ENV_VARS: ${{ secrets.DEV_ENV_VARIABLES }}
         run: |
           if [ "$SYNC_CODE" = "true" ]; then
@@ -107,9 +113,15 @@ jobs:
             printf "%s" "$ENV_VARS" | sudo tee .env > /dev/null
           fi
 
-          if [ "$RESTART_ALL" = "true" ]; then
+          if [ "$RESTART_AND_REBUILD" = "true" ]; then
             echo "Restarting all services..."
             sudo docker-compose up --build -d
+          fi
+
+          if [ "$RESTART_ALL" = "true" ]; then
+            echo "Restarting all services..."
+            sudo docker-compose down
+            sudo docker-compose up -d
           fi
 
           if [ "$INSTALL_REQUIREMENTS" = "true" ]; then
