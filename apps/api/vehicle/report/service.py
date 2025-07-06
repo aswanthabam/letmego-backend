@@ -147,7 +147,7 @@ class ReportService(AbstractService):
         user_id: UUID,
         notes: Optional[str] = None,
     ) -> VehicleReport:
-        report = await self.get_report(session=self.session, report_id=report_id)
+        report = await self.get_report(report_id=report_id)
         allowed_statuses = []
 
         if report.user_id == user_id:
