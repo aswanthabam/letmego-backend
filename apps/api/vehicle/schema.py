@@ -54,7 +54,7 @@ class VehicleType(Enum):
 
     @property
     def display_text(self) -> str:
-        return self._display_map[self.value]
+        return self._display_map.value[self.value]
 
 
 class VehicleValidatorMixin:
