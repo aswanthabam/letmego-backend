@@ -25,9 +25,10 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 # setup logging for sqlalchamey
 
-logging.basicConfig()
 logger = logging.getLogger("sqlalchemy.engine")
 logger.setLevel(logging.INFO)
+logger.propagate = False
+logger.handlers.clear()
 
 os.makedirs("logs", exist_ok=True)
 

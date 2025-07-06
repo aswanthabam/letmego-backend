@@ -1,12 +1,60 @@
 # apps/vehicle/schema.py
 from datetime import datetime
+from enum import Enum
 from uuid import UUID
 from pydantic import Field, field_validator
 import re
 from typing import Optional
 
 from core.response.models import CustomBaseModel
-from apps.api.vehicle.models import VehicleType
+
+from enum import Enum
+
+
+class VehicleType(Enum):
+    CAR = "car"
+    MOTORCYCLE = "motorcycle"
+    TRUCK = "truck"
+    BUS = "bus"
+    VAN = "van"
+    SUV = "suv"
+    PICKUP_TRUCK = "pickup_truck"
+    SCOOTER = "scooter"
+    BICYCLE = "bicycle"
+    TRAILER = "trailer"
+    RICKSHAW = "rickshaw"
+    AUTO_RICKSHAW = "auto_rickshaw"
+    TRACTOR = "tractor"
+    AMBULANCE = "ambulance"
+    FIRE_TRUCK = "fire_truck"
+    POLICE_VEHICLE = "police_vehicle"
+    TAXI = "taxi"
+    OTHER = "other"
+
+    _display_map = {
+        "car": "Car",
+        "motorcycle": "Motorcycle",
+        "truck": "Truck",
+        "bus": "Bus",
+        "van": "Van",
+        "suv": "SUV",
+        "pickup_truck": "Pickup Truck",
+        "scooter": "Scooter",
+        "bicycle": "Bicycle",
+        "trailer": "Trailer",
+        "rickshaw": "Rickshaw",
+        "auto_rickshaw": "Auto Rickshaw",
+        "tractor": "Tractor",
+        "ambulance": "Ambulance",
+        "fire_truck": "Fire Truck",
+        "police_vehicle": "Police Vehicle",
+        "taxi": "Taxi",
+        "other": "Other",
+    }
+
+    @property
+    def display_text(self) -> str:
+        return self._display_map[self.value]
 
 
 class VehicleValidatorMixin:
@@ -74,5 +122,6 @@ class UpdateVehicleRequest(CustomBaseModel):
 
 class VehicleTypeResponse(CustomBaseModel):
     """Response model for vehicle type choices"""
+
     value: str
     display_name: str

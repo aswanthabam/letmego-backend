@@ -1,6 +1,6 @@
 # apps/vehicle/models.py
 
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, UUID, Enum
+from sqlalchemy import Column, String, Boolean, ForeignKey, UUID
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
 import enum
@@ -10,35 +10,6 @@ from core.db.mixins import SoftDeleteMixin, TimestampsMixin
 from core.storage.sqlalchemy.fields.imagefield import ImageField
 
 from apps.storage import default_storage
-
-
-# -------------------------
-# Vehicle Type Enum
-# -------------------------
-class VehicleType(enum.Enum):
-    CAR = "Car"
-    MOTORCYCLE = "Motorcycle"
-    TRUCK = "Truck"
-    BUS = "Bus"
-    VAN = "Van"
-    SUV = "SUV"
-    PICKUP_TRUCK = "Pickup Truck"
-    SCOOTER = "Scooter"
-    BICYCLE = "Bicycle"
-    TRAILER = "Trailer"
-    RICKSHAW = "Rickshaw"
-    AUTO_RICKSHAW = "Auto Rickshaw"
-    TRACTOR = "Tractor"
-    AMBULANCE = "Ambulance"
-    FIRE_TRUCK = "Fire Truck"
-    POLICE_VEHICLE = "Police Vehicle"
-    TAXI = "Taxi"
-    OTHER = "Other"
-
-    @classmethod
-    def choices(cls):
-        """Return a list of (value, display_name) tuples"""
-        return [(member.value, member.value) for member in cls]
 
 
 # -------------------------
@@ -55,7 +26,7 @@ class Vehicle(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     )
     vehicle_number = Column(String(20), unique=True, nullable=False)
     name = Column(String(100), nullable=True)
-    vehicle_type = Column(Enum(VehicleType), nullable=True)
+    vehicle_type = Column(String(30), nullable=True)
     brand = Column(String(50), nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     image = Column(
@@ -79,6 +50,4 @@ class Vehicle(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     def owner_name(self) -> str:
         if not self.owner:
             return "Unknown Owner"
-        if self.owner.privacy_preference.value == "anonymous":
-            return "Anonymous"
         return self.owner.fullname
