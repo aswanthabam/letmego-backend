@@ -13,6 +13,12 @@ class UserService(AbstractService):
     def __init__(self, session):
         super().__init__(session)
 
+    async def get_user_by_uid(self, uid: str, raise_exception: bool = True):
+        user = await self.session.scalar(select(User).where(User.uid == uid))
+        if raise_exception and not user:
+            raise InvalidRequestException("User not found", status_code=404)
+        return user
+
     async def get_user_by_id(self, user_id: int):
         user = await self.session.scalar(select(User).where(User.id == user_id))
         if not user:
