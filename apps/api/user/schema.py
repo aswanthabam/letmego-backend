@@ -47,3 +47,5 @@ class UserDetailsResponse(CustomBaseModel):
     fullname: str = Field(...)
     email_verified: bool = Field(...)
     profile_picture: dict | None = Field(None)
+    company_name: str | None = Field(None)
+    privacy_preference: PrivacyPreference = Field(...)
