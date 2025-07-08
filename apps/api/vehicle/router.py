@@ -5,6 +5,8 @@ from fastapi import APIRouter, File, UploadFile, Form
 from apps.api.auth.dependency import UserDependency
 from apps.api.vehicle.service import VehicleServiceDependency
 from apps.api.vehicle.schema import (
+    FuelType,
+    FuelTypeResponse,
     VehicleResponse,
     VehicleType,
     VehicleTypeResponse,
@@ -26,6 +28,15 @@ async def get_vehicle_types() -> List[VehicleTypeResponse]:
     ]
 
 
+@router.get("/fuel-types", description="Get all vehicle types")
+async def get_vehicle_types() -> List[VehicleTypeResponse]:
+    """Get all available vehicle types"""
+    return [
+        FuelTypeResponse(value=vt.value, display_name=vt.display_text)
+        for vt in FuelType
+    ]
+
+
 @router.post("/create", description="Create a new vehicle")
 async def create_vehicle_endpoint(
     user: UserDependency,
@@ -33,6 +44,7 @@ async def create_vehicle_endpoint(
     name: str = Form(None),
     vehicle_number: str = Form(...),
     vehicle_type: VehicleType = Form(None),
+    fuel_type: FuelType = Form(None),
     brand: str = Form(None),
     image: Optional[UploadFile] = File(None),
 ) -> VehicleResponse:
@@ -41,6 +53,7 @@ async def create_vehicle_endpoint(
         user_id=user.id,
         name=name,
         vehicle_type=vehicle_type.value if vehicle_type else None,
+        fuel_type=fuel_type.value if fuel_type else None,
         brand=brand,
         image=image,
         is_verified=False,
@@ -56,6 +69,7 @@ async def update_vehicle_endpoint(
     name: str = Form(None),
     vehicle_number: str = Form(...),
     vehicle_type: VehicleType = Form(None),
+    fuel_type: FuelType = Form(None),
     brand: str = Form(None),
     image: UploadFile = File(None),
 ) -> VehicleResponse:
@@ -65,6 +79,7 @@ async def update_vehicle_endpoint(
         vehicle_number=vehicle_number,
         name=name,
         vehicle_type=vehicle_type.value if vehicle_type else None,
+        fuel_type=fuel_type.value if fuel_type else None,
         brand=brand,
         image=image,
     )
@@ -83,9 +98,14 @@ async def list_vehicles_endpoint(
     vehicle_service: VehicleServiceDependency,
     user: UserDependency,
     vehicle_type: Optional[VehicleType] = None,
+    search_term: Optional[str] = None,
+    fuel_type: Optional[FuelType] = None,
 ) -> List[VehicleResponse]:
     return await vehicle_service.get_vehicles(
-        user_id=user.id, vehicle_type=vehicle_type.value if vehicle_type else None
+        user_id=user.id,
+        vehicle_type=vehicle_type.value if vehicle_type else None,
+        fuel_type=fuel_type.value if fuel_type else None,
+        search_term=search_term,
     )
 
 

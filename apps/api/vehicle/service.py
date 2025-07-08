@@ -32,6 +32,7 @@ class VehicleService(AbstractService):
         user_id: UUID,
         name: Optional[str] = None,
         vehicle_type: str = None,
+        fuel_type: Optional[str] = None,
         brand: Optional[str] = None,
         image: Optional[UploadFile] = None,
         is_verified: bool = False,
@@ -63,6 +64,7 @@ class VehicleService(AbstractService):
                 brand=brand,
                 user_id=user_id,
                 is_verified=is_verified,
+                fuel_type=fuel_type,
             )
 
             # Handle image upload
@@ -120,8 +122,10 @@ class VehicleService(AbstractService):
         self,
         user_id: Optional[UUID] = None,
         vehicle_type: str = None,
+        fuel_type: Optional[str] = None,
         brand: Optional[str] = None,
         is_verified: Optional[bool] = None,
+        search_term: Optional[str] = None,
         limit: Optional[int] = None,
         offset: int = 0,
     ) -> List[Vehicle]:
@@ -149,8 +153,19 @@ class VehicleService(AbstractService):
         if vehicle_type:
             query = query.where(Vehicle.vehicle_type == vehicle_type)
 
+        if fuel_type:
+            query = query.where(Vehicle.fuel_type == fuel_type)
+
         if brand:
             query = query.where(Vehicle.brand.ilike(f"%{brand}%"))
+
+        if search_term:
+            search_term = f"%{search_term}%"
+            query = query.where(
+                (Vehicle.vehicle_number.ilike(search_term))
+                | (Vehicle.name.ilike(search_term))
+                | (Vehicle.brand.ilike(search_term))
+            )
 
         if is_verified is not None:
             query = query.where(Vehicle.is_verified == is_verified)
@@ -175,6 +190,7 @@ class VehicleService(AbstractService):
         vehicle_number: str,
         name: Optional[str] = None,
         vehicle_type: str = None,
+        fuel_type: Optional[str] = None,
         brand: Optional[str] = None,
         image: Optional[UploadFile] = None,
     ) -> Optional[Vehicle]:
@@ -214,6 +230,7 @@ class VehicleService(AbstractService):
                 "vehicle_number": vehicle_number,
                 "name": name,
                 "vehicle_type": vehicle_type,
+                "fuel_type": fuel_type,
                 "brand": brand,
             }
 
@@ -265,106 +282,6 @@ class VehicleService(AbstractService):
         existing_vehicle.soft_delete()
         await self.session.commit()
         return True
-
-    # Additional utility functions
-
-    async def get_vehicle_with_owner(
-        self, vehicle_id: UUID, include_deleted: bool = False
-    ) -> Optional[Vehicle]:
-        """
-        Get a vehicle with its owner relationship loaded.
-
-        Args:
-            session: AsyncSession database connection
-            vehicle_id: UUID of the vehicle
-            include_deleted: Whether to include soft-deleted records
-
-        Returns:
-            Vehicle or None: Vehicle instance with owner loaded
-        """
-        from sqlalchemy.orm import selectinload
-
-        query = select(Vehicle).options(selectinload(Vehicle.owner))
-        query = query.where(Vehicle.id == vehicle_id)
-
-        if not include_deleted:
-            query = query.where(Vehicle.deleted_at.is_(None))
-
-        result = await self.session.execute(query)
-        return result.scalar_one_or_none()
-
-    async def get_vehicles_with_reports(
-        self, user_id: Optional[UUID] = None, include_deleted: bool = False
-    ) -> List[Vehicle]:
-        """
-        Get vehicles with their reports relationship loaded.
-
-        Args:
-            session: AsyncSession database connection
-            user_id: Optional filter by owner user ID
-            include_deleted: Whether to include soft-deleted records
-
-        Returns:
-            List[Vehicle]: List of vehicles with reports loaded
-        """
-        from sqlalchemy.orm import selectinload
-
-        query = select(Vehicle).options(selectinload(Vehicle.reports))
-
-        if user_id:
-            query = query.where(Vehicle.user_id == user_id)
-
-        if not include_deleted:
-            query = query.where(Vehicle.deleted_at.is_(None))
-
-        result = await self.session.execute(query)
-        return result.scalars().all()
-
-    async def search_vehicles(
-        self,
-        search_term: str,
-        user_id: Optional[UUID] = None,
-        limit: Optional[int] = None,
-        offset: int = 0,
-    ) -> List[Vehicle]:
-        """
-        Search vehicles by vehicle number, name, or brand.
-
-        Args:
-            session: AsyncSession database connection
-            search_term: Search term to match against vehicle fields
-            user_id: Optional filter by owner user ID
-            limit: Maximum number of records to return
-            offset: Number of records to skip
-
-        Returns:
-            List[Vehicle]: List of matching vehicle instances
-        """
-        query = select(Vehicle)
-
-        # Search in vehicle_number, name, and brand
-        search_filter = (
-            Vehicle.vehicle_number.ilike(f"%{search_term}%")
-            | Vehicle.name.ilike(f"%{search_term}%")
-            | Vehicle.brand.ilike(f"%{search_term}%")
-        )
-        query = query.where(search_filter)
-
-        if user_id:
-            query = query.where(Vehicle.user_id == user_id)
-
-        # Only include non-deleted records
-        query = query.where(Vehicle.deleted_at.is_(None))
-
-        # Apply pagination
-        if offset > 0:
-            query = query.offset(offset)
-
-        if limit:
-            query = query.limit(limit)
-
-        result = await self.session.execute(query)
-        return result.scalars().all()
 
 
 VehicleServiceDependency = Annotated[VehicleService, VehicleService.get_dependency()]
