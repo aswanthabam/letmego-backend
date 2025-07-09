@@ -18,7 +18,7 @@ class UserPrivacyWrapper(CustomBaseModel):
 
     def model_post_init(self, context):
         viewer_id = get_current_user_id()
-        has_perm = viewer_id == self.id
+        has_perm = str(viewer_id) == str(self.id)
         if hasattr(self, "fullname"):
             if not has_perm and self.privacy_preference == PrivacyPreference.ANONYMOUS:
                 self.fullname = "Anonymous User"

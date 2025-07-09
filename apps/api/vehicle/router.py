@@ -7,7 +7,8 @@ from apps.api.vehicle.service import VehicleServiceDependency
 from apps.api.vehicle.schema import (
     FuelType,
     FuelTypeResponse,
-    VehicleResponse,
+    VehicleDetailResponse,
+    VehicleResponseMin,
     VehicleType,
     VehicleTypeResponse,
 )
@@ -47,7 +48,7 @@ async def create_vehicle_endpoint(
     fuel_type: FuelType = Form(None),
     brand: str = Form(None),
     image: Optional[UploadFile] = File(None),
-) -> VehicleResponse:
+) -> VehicleResponseMin:
     vehicle = await vehicle_service.create_vehicle(
         vehicle_number=vehicle_number,
         user_id=user.id,
@@ -72,7 +73,7 @@ async def update_vehicle_endpoint(
     fuel_type: FuelType = Form(None),
     brand: str = Form(None),
     image: UploadFile = File(None),
-) -> VehicleResponse:
+) -> VehicleResponseMin:
     vehicle = await vehicle_service.update_vehicle(
         vehicle_id=id,
         user_id=user.id,
@@ -89,23 +90,41 @@ async def update_vehicle_endpoint(
 @router.get("/get/{id}", description="Get vehicle details by ID")
 async def get_vehicle_endpoint(
     vehicle_service: VehicleServiceDependency, user: UserDependency, id: str
-) -> VehicleResponse:
+) -> VehicleDetailResponse:
     return await vehicle_service.get_vehicle(vehicle_id=id, user_id=user.id)
 
 
-@router.get("/list", description="List vehicles")
+@router.get("/list", description="For listing all vehicles user ownes")
 async def list_vehicles_endpoint(
     vehicle_service: VehicleServiceDependency,
     user: UserDependency,
     vehicle_type: Optional[VehicleType] = None,
     search_term: Optional[str] = None,
     fuel_type: Optional[FuelType] = None,
-) -> List[VehicleResponse]:
+) -> List[VehicleResponseMin]:
     return await vehicle_service.get_vehicles(
         user_id=user.id,
         vehicle_type=vehicle_type.value if vehicle_type else None,
         fuel_type=fuel_type.value if fuel_type else None,
         search_term=search_term,
+    )
+
+
+@router.get("/search", description="Search vehicles")
+async def search_vehicles_endpoint(
+    vehicle_service: VehicleServiceDependency,
+    user: UserDependency,
+    vehicle_number: str,
+    limit: int = 10,
+    offset: int = 0,
+) -> List[VehicleResponseMin]:
+    """
+    Search for vehicles by vehicle number.
+    """
+    return await vehicle_service.search_vehicle_number(
+        vehicle_number=vehicle_number,
+        limit=limit,
+        offset=offset,
     )
 
 

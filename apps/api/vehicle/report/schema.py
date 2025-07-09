@@ -43,7 +43,6 @@ class ReportStatusEnum(str, Enum):
         CLOSED_STATUSES = {
             "reporter_closed",
             "reporter_resolved",
-            "reporter_rejected",
             "system_closed",
             "owner_resolved",
             "owner_rejected",
@@ -51,18 +50,18 @@ class ReportStatusEnum(str, Enum):
         return self.value in CLOSED_STATUSES
 
 
-class VehicleReportPrivacyWrapper(BaseModel):
+class VehicleReportWrapper(BaseModel):
     """
     Base wrapper for vehicle report privacy.
     This will handle the privacy preferences of the user.
     """
 
     def model_post_init(self, context):
-        viewer_id = get_current_user_id()
-        has_perm = viewer_id == self.id
-        is_anonymous = self.is_anonymous if hasattr(self, "is_anonymous") else False
 
         if hasattr(self, "reporter"):
+            viewer_id = get_current_user_id()
+            has_perm = str(viewer_id) == str(self.reporter.id)
+            is_anonymous = self.is_anonymous if hasattr(self, "is_anonymous") else False
             if not has_perm and is_anonymous:
                 self.reporter.fullname = "Anonymous User"
                 self.reporter.email = "xxxxxxxxxx"
@@ -70,11 +69,18 @@ class VehicleReportPrivacyWrapper(BaseModel):
                 self.reporter.profile_picture = None
                 self.reporter.company_name = "xxxxxxxxxx"
 
+        if hasattr(self, "current_status") and hasattr(self.current_status, "message"):
+            self.current_status = {
+                "key": self.current_status.value,
+                "value": self.current_status.message,
+            }
+
 
 class UserMin(UserPrivacyWrapper):
     id: UUID
     fullname: str | None = None
     email: str | None = None
+    phone_number: str | None = None
     profile_picture: Optional[dict] = None
     company_name: Optional[str] = None
 
@@ -123,7 +129,7 @@ class VehicleReportStatusLogMin(BaseModel):
         from_attributes = True
 
 
-class VehicleReportDetail(VehicleReportPrivacyWrapper):
+class VehicleReportDetail(VehicleReportWrapper):
     """
     Schema for reading a single vehicle report with details.
     """
@@ -132,7 +138,7 @@ class VehicleReportDetail(VehicleReportPrivacyWrapper):
     report_number: int
     vehicle: VehicleDetail
     notes: Optional[str]
-    current_status: str
+    current_status: ReportStatusEnum
     is_closed: bool
     is_anonymous: bool
     reporter: UserMin
@@ -145,12 +151,12 @@ class VehicleReportDetail(VehicleReportPrivacyWrapper):
         from_attributes = True
 
 
-class VehicleReportMin(VehicleReportPrivacyWrapper):
+class VehicleReportMin(VehicleReportWrapper):
     id: UUID
     report_number: int
     vehicle: VehicleDetail
     reporter: UserMin
-    current_status: str
+    current_status: ReportStatusEnum
     is_closed: bool
     is_anonymous: bool
     notes: Optional[str] = None

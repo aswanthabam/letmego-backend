@@ -1,15 +1,13 @@
 # apps/vehicle/service.py
-from datetime import date
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+import re
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
-from typing import Annotated, Optional, List, Dict, Any
-from uuid import UUID, uuid4
+from typing import Annotated, Optional, List
+from uuid import UUID
 from fastapi import UploadFile
-import io
+from sqlalchemy.orm import joinedload
 
 from apps.api.vehicle.models import Vehicle
-from apps.api.vehicle.schema import VehicleType
 from core.architecture.service import AbstractService
 from core.exceptions.authentication import (
     ForbiddenException,
@@ -57,6 +55,7 @@ class VehicleService(AbstractService):
             IntegrityError: If vehicle_number already exists or user_id is invalid
         """
         try:
+            vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
             vehicle = Vehicle(
                 vehicle_number=vehicle_number,
                 name=name,
@@ -103,7 +102,7 @@ class VehicleService(AbstractService):
         Returns:
             Vehicle or None: Found vehicle instance or None if not found
         """
-        query = select(Vehicle)
+        query = select(Vehicle).options(joinedload(Vehicle.owner))
 
         query = query.where(Vehicle.id == vehicle_id, Vehicle.user_id == user_id)
 
@@ -117,6 +116,28 @@ class VehicleService(AbstractService):
             raise InvalidRequestException("Vehicle not found")
 
         return vehicle
+
+    async def search_vehicle_number(
+        self,
+        vehicle_number: str,
+        limit: Optional[int] = 10,
+        offset: int = 0,
+    ) -> List[Vehicle]:
+        """
+        Search for a vehicle by its number.
+        """
+        vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
+
+        query = select(Vehicle).where(
+            Vehicle.vehicle_number.ilike(f"%{vehicle_number}%")
+        )
+        if offset is not None:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+
+        results = list(await self.session.scalars(query))
+        return results
 
     async def get_vehicles(
         self,
