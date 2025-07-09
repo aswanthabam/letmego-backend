@@ -6,6 +6,7 @@ from pydantic import Field, field_validator
 import re
 from typing import Optional
 
+from apps.api.user.schema import UserPrivacyWrapper
 from core.response.models import CustomBaseModel
 
 from enum import Enum
@@ -30,6 +31,34 @@ vehicle_type_display_text = {
     "taxi": "Taxi",
     "other": "Other",
 }
+
+fuel_type_display_text = {
+    "petrol": "Petrol",
+    "diesel": "Diesel",
+    "electric": "Electric",
+    "hybrid": "Hybrid (Petrol/Electric)",
+    "cng": "CNG (Compressed Natural Gas)",
+    "lpg": "LPG (Liquefied Petroleum Gas)",
+    "hydrogen": "Hydrogen",
+    "biofuel": "Biofuel",
+    "other": "Other",
+}
+
+
+class FuelType(Enum):
+    PETROL = "petrol"
+    DIESEL = "diesel"
+    ELECTRIC = "electric"
+    HYBRID = "hybrid"
+    CNG = "cng"
+    LPG = "lpg"
+    HYDROGEN = "hydrogen"
+    BIOFUEL = "biofuel"
+    OTHER = "other"
+
+    @property
+    def display_text(self) -> str:
+        return fuel_type_display_text[self.value]
 
 
 class VehicleType(Enum):
@@ -82,7 +111,14 @@ class VehicleValidatorMixin:
         return v
 
 
-class VehicleResponse(CustomBaseModel):
+class VehicleOwnerMin(UserPrivacyWrapper):
+    id: UUID = Field(...)
+    fullname: str | None = Field(None)
+    email: str | None = Field(None)
+    phone_number: str | None = Field(None)
+
+
+class VehicleDetailResponse(CustomBaseModel):
     id: UUID = Field(...)
     name: str | None = Field(None)
     vehicle_number: str = Field(
@@ -90,12 +126,42 @@ class VehicleResponse(CustomBaseModel):
         min_length=1,
         max_length=20,
     )
+    owner: VehicleOwnerMin | None = Field(None)
+    fuel_type: FuelType | None = Field(None)
     vehicle_type: VehicleType | None = Field(None)
     brand: str | None = Field(None)
-    image: dict | None = Field(None)  # This will contain the S3 image field data
+    image: dict | None = Field(None)
     is_verified: bool = Field(False)
-    created_at: datetime = Field(...)
-    updated_at: datetime = Field(...)
+
+    @field_validator("vehicle_type", "fuel_type", mode="after")
+    def validate_enum_fields(cls, v):
+        if v:
+            if hasattr(v, "value"):
+                return v.display_text
+        return v
+
+
+class VehicleResponseMin(CustomBaseModel):
+    id: UUID = Field(...)
+    name: str | None = Field(None)
+    vehicle_number: str = Field(
+        ...,
+        min_length=1,
+        max_length=20,
+    )
+    fuel_type: FuelType | None = Field(None)
+    vehicle_type: VehicleType | None = Field(None)
+    is_verified: bool = Field(False)
+
+    @field_validator("vehicle_type", "fuel_type", mode="after")
+    def validate_enum_fields(cls, v):
+        if v:
+            if hasattr(v, "value"):
+                return {
+                    "key": v.value,
+                    "value": v.display_text,
+                }
+        return v
 
 
 class CreateVehicleRequest(CustomBaseModel):
@@ -106,6 +172,7 @@ class CreateVehicleRequest(CustomBaseModel):
         max_length=20,
     )
     vehicle_type: VehicleType | None = Field(None)
+    fuel_type: FuelType | None = Field(None)
     brand: str | None = Field(None)
 
 
@@ -117,11 +184,19 @@ class UpdateVehicleRequest(CustomBaseModel):
         max_length=20,
     )
     vehicle_type: VehicleType | None = Field(None)
+    fuel_type: FuelType | None = Field(None)
     brand: str | None = Field(None)
 
 
 class VehicleTypeResponse(CustomBaseModel):
     """Response model for vehicle type choices"""
+
+    value: str
+    display_name: str
+
+
+class FuelTypeResponse(CustomBaseModel):
+    """Response model for fuel type choices"""
 
     value: str
     display_name: str

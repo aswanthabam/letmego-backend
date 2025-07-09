@@ -71,6 +71,7 @@ class ReportService(AbstractService):
         user: User,
         notes: Optional[str],
         images: List[UploadFile],
+        is_anonymous: bool = False,
     ) -> VehicleReport:
         vehicle = await self.get_vehicle(vehicle_id)
 
@@ -82,6 +83,7 @@ class ReportService(AbstractService):
             user_id=user.id,
             notes=notes,
             current_status=ReportStatusEnum.ACTIVE.value,
+            is_anonymous=is_anonymous,
         )
         self.session.add(new_report)
         await self.session.flush()
@@ -114,24 +116,39 @@ class ReportService(AbstractService):
         await self.session.refresh(new_report)
         return new_report
 
-    async def get_reports_for_user(
+    async def get_reports(
         self,
-        current_user_id: UUID,
+        reported_user_id: UUID | None = None,
+        user_id: UUID | None = None,
+        is_closed: bool | None = None,
         current_status: Optional[ReportStatusEnum] = "active",
         limit: int = 10,
         offset: int = 0,
     ) -> List[VehicleReport]:
+        """
+        Retrieves all vehicle reports.
+        """
+        if not reported_user_id and not user_id:
+            raise ValueError(
+                "Either reported_user_id or user_id must be provided to filter reports."
+            )
         query = (
             select(VehicleReport)
             .join(Vehicle, VehicleReport.vehicle_id == Vehicle.id)
-            .where(Vehicle.user_id == current_user_id)
             .options(selectinload(VehicleReport.images))
             .options(joinedload(VehicleReport.vehicle))
             .options(joinedload(VehicleReport.reporter))
             .order_by(VehicleReport.created_at.desc())
         )
+        if reported_user_id:
+            query = query.where(VehicleReport.user_id == reported_user_id)
+        if user_id:
+            query = query.where(Vehicle.user_id == user_id)
         if current_status:
             query = query.where(VehicleReport.current_status == current_status.value)
+        if is_closed is not None:
+            query = query.where(VehicleReport.is_closed == is_closed)
+
         if offset is not None:
             query = query.offset(offset)
         if limit is not None:
@@ -163,6 +180,9 @@ class ReportService(AbstractService):
             allowed_statuses = [
                 ReportStatusEnum.OWNER_RESOLVED,
                 ReportStatusEnum.OWNER_REJECTED,
+                ReportStatusEnum.OWNER_SEEN,
+                ReportStatusEnum.OWNER_RESPONDED,
+                ReportStatusEnum.OWNER_NOTIFIED,
             ]
 
         if new_status not in allowed_statuses:
@@ -171,6 +191,8 @@ class ReportService(AbstractService):
             )
 
         report.current_status = new_status
+        report.is_closed = new_status.is_closed
+
         status_log = VehicleReportStatusLog(
             report_id=report.id,
             user_id=user_id,

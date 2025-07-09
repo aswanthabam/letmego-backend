@@ -26,6 +26,7 @@ class Vehicle(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     )
     vehicle_number = Column(String(20), unique=True, nullable=False)
     name = Column(String(100), nullable=True)
+    fuel_type = Column(String(50), nullable=True)
     vehicle_type = Column(String(30), nullable=True)
     brand = Column(String(50), nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)

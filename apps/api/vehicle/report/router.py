@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 from fastapi import (
     APIRouter,
@@ -40,6 +40,9 @@ async def report_vehicle_endpoint(
     notes: Optional[str] = Form(
         None, description="Optional notes or details about the report."
     ),
+    is_anonymous: bool = Form(
+        False, description="Whether the report should be anonymous."
+    ),
     images: List[UploadFile] = File(
         ..., description="Multiple image files to upload for the report."
     ),
@@ -48,6 +51,7 @@ async def report_vehicle_endpoint(
         vehicle_id=vehicle_id,
         user=user,
         notes=notes,
+        is_anonymous=is_anonymous,
         images=images,
     )
     return await report_service.get_report_details(
@@ -60,7 +64,7 @@ async def report_vehicle_endpoint(
     summary="See reports towards my vehicles",
     description="Retrieves a list of vehicle reports where the reported vehicle belongs to the current user.",
 )
-async def get_reports_towards_me(
+async def get_reports_endpoint(
     report_service: ReportServiceDependency,
     request: Request,
     user: UserDependency,
@@ -68,18 +72,35 @@ async def get_reports_towards_me(
     current_status: Optional[ReportStatusEnum] = Query(
         None,
     ),
+    is_closed: Optional[bool] = Query(
+        None, description="Filter reports by their closed status."
+    ),
+    type: Literal["reported_by_me", "reported_to_me"] = Query(
+        "reported_by_me",
+        description="Type of reports to retrieve. 'reported_by_me' for reports made by the user, 'reported_to_me' for reports against vehicles owned by the user.",
+    ),
 ) -> PaginatedResponse[VehicleReportMin]:
     """
     Endpoint to view reports targeted at vehicles owned by the authenticated user.
     - Requires `current_user` to be authenticated.
     - Returns a paginated list of reports.
     """
-    reports = await report_service.get_reports_for_user(
-        current_user_id=user.id,
-        current_status=current_status,
-        limit=pagination.limit,
-        offset=pagination.offset,
-    )
+    if type == "reported_by_me":
+        reports = await report_service.get_reports(
+            reported_user_id=user.id,
+            current_status=current_status,
+            is_closed=is_closed,
+            limit=pagination.limit,
+            offset=pagination.offset,
+        )
+    elif type == "reported_to_me":
+        reports = await report_service.get_reports(
+            user_id=user.id,
+            current_status=current_status,
+            is_closed=is_closed,
+            limit=pagination.limit,
+            offset=pagination.offset,
+        )
     return paginated_response(request=request, result=reports, schema=VehicleReportMin)
 
 

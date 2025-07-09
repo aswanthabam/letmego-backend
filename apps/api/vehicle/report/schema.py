@@ -6,6 +6,7 @@ from enum import Enum  # Import Enum
 from pydantic import BaseModel, Field
 
 from apps.api.user.schema import UserPrivacyWrapper
+from apps.context import get_current_user_id
 
 
 # Enums for statuses
@@ -37,27 +38,49 @@ class ReportStatusEnum(str, Enum):
         }
         return VEHICLE_STATUS_MESSAGES[self.value]
 
+    @property
+    def is_closed(self) -> bool:
+        CLOSED_STATUSES = {
+            "reporter_closed",
+            "reporter_resolved",
+            "system_closed",
+            "owner_resolved",
+            "owner_rejected",
+        }
+        return self.value in CLOSED_STATUSES
 
-class VehicleReportMarkResolved(BaseModel):
+
+class VehicleReportWrapper(BaseModel):
     """
-    Schema for marking a vehicle report as resolved or unresolved by the reporter.
+    Base wrapper for vehicle report privacy.
+    This will handle the privacy preferences of the user.
     """
 
-    is_resolved: bool = Field(
-        ..., description="True to mark as resolved, False to mark as unresolved."
-    )
-    notes: Optional[str] = Field(
-        None, description="Optional notes regarding the resolution status change."
-    )
+    def model_post_init(self, context):
 
+        if hasattr(self, "reporter"):
+            viewer_id = get_current_user_id()
+            has_perm = str(viewer_id) == str(self.reporter.id)
+            is_anonymous = self.is_anonymous if hasattr(self, "is_anonymous") else False
+            if not has_perm and is_anonymous:
+                self.reporter.fullname = "Anonymous User"
+                self.reporter.email = "xxxxxxxxxx"
+                self.reporter.phone_number = "xxxxxxxxxx"
+                self.reporter.profile_picture = None
+                self.reporter.company_name = "xxxxxxxxxx"
 
-# --- Response Schemas ---
+        if hasattr(self, "current_status") and hasattr(self.current_status, "message"):
+            self.current_status = {
+                "key": self.current_status.value,
+                "value": self.current_status.message,
+            }
 
 
 class UserMin(UserPrivacyWrapper):
     id: UUID
     fullname: str | None = None
     email: str | None = None
+    phone_number: str | None = None
     profile_picture: Optional[dict] = None
     company_name: Optional[str] = None
 
@@ -106,7 +129,7 @@ class VehicleReportStatusLogMin(BaseModel):
         from_attributes = True
 
 
-class VehicleReportDetail(BaseModel):
+class VehicleReportDetail(VehicleReportWrapper):
     """
     Schema for reading a single vehicle report with details.
     """
@@ -115,7 +138,9 @@ class VehicleReportDetail(BaseModel):
     report_number: int
     vehicle: VehicleDetail
     notes: Optional[str]
-    current_status: str
+    current_status: ReportStatusEnum
+    is_closed: bool
+    is_anonymous: bool
     reporter: UserMin
     created_at: datetime
     updated_at: datetime
@@ -126,12 +151,14 @@ class VehicleReportDetail(BaseModel):
         from_attributes = True
 
 
-class VehicleReportMin(BaseModel):
+class VehicleReportMin(VehicleReportWrapper):
     id: UUID
     report_number: int
     vehicle: VehicleDetail
     reporter: UserMin
-    current_status: str
+    current_status: ReportStatusEnum
+    is_closed: bool
+    is_anonymous: bool
     notes: Optional[str] = None
     images: List[VehicleReportImageMin] = []
     created_at: datetime

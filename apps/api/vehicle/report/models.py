@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    Boolean,
     Column,
     Integer,
     String,
@@ -45,6 +46,18 @@ class VehicleReport(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     notes = Column(Text, nullable=True)
     current_status = Column(String(50), nullable=False, default="active")
+    is_anonymous = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+    is_closed = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
 
     vehicle = relationship("Vehicle", back_populates="reports")
     reporter = relationship("User", back_populates="reports")
