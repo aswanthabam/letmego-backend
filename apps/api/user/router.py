@@ -13,15 +13,6 @@ router = APIRouter(
 )
 
 
-@router.get("/details", summary="Get user details")
-async def get_user_details(user: UserDependency) -> UserDetailsResponse:
-    """
-    Endpoint to get user details by UID.
-    This is a placeholder endpoint and should be implemented with actual user retrieval logic.
-    """
-    return user
-
-
 @router.put("/update", summary="Update user details")
 async def update_user_details(
     user: UserDependency,
