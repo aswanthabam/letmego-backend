@@ -48,8 +48,9 @@ class User(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     company_name = Column(String(100), nullable=True)
     privacy_preference = Column(
         String(20),
-        default=PrivacyPreference.PRIVATE.value,
+        default=PrivacyPreference.PUBLIC.value,
         nullable=False,
+        server_default=PrivacyPreference.PUBLIC.value,
     )
 
     vehicles = relationship("Vehicle", back_populates="owner")

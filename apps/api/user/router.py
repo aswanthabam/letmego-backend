@@ -69,7 +69,7 @@ async def authenticate_user_endpoint(
     This endpoint retrieves user details based on the Firebase UID from the decoded token.
     If the user does not exist, it attempts to authenticate the user via Firebase.
     """
-    user = user_service.get_user_by_uid(decoded_token.uid, raise_exception=False)
+    user = await user_service.get_user_by_uid(decoded_token.uid, raise_exception=False)
     if not user:
         user = await auth_service.firebase_authenticate(uid=decoded_token.uid)
     return user
