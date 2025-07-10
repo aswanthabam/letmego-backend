@@ -6,22 +6,13 @@ from core.storage.sqlalchemy.fields.abstract import AbstractFileField
 from core.storage.storage_class.abstract import Storage
 
 
-class FileObject:
-    def __init__(self, storage: Storage, file_path, file_url):
-        """
-        Initialize an File instance.
-
-        Args:
-            storage: The storage system (not used in this implementation).
-            file_path (str): The path to the file in S3.
-            file_url (str): The URL to access the file.
-        """
-        self.storage = storage
-        self.file_path = file_path
-        self.file_url = file_url
-
-    def __str__(self):
-        return self.file_url
+class FileObject(str):
+    def __new__(cls, storage, file_path, file_url):
+        obj = str.__new__(cls, file_url)
+        obj.storage = storage
+        obj.file_path = file_path
+        obj.file_url = file_url
+        return obj
 
     def delete(self):
         raise NotImplementedError(

@@ -1,5 +1,6 @@
 from sqlalchemy import UUID, Column, ForeignKey, String, Text
 import sqlalchemy as sa
+from sqlalchemy.orm import relationship
 
 from core.db.base import AbstractSQLModel
 from core.db.mixins import SoftDeleteMixin, TimestampsMixin
@@ -25,6 +26,28 @@ class ChatMessage(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         UUID(as_uuid=True), ForeignKey("chat_messages.id"), nullable=True
     )
 
+    report = relationship("VehicleReport", back_populates="chat_messages")
+    replay_to_message = relationship(
+        "ChatMessage",
+        remote_side=[id],
+        back_populates="replies",
+        uselist=False,
+        foreign_keys=[replay_to_message_id],
+    )
+    replies = relationship(
+        "ChatMessage",
+        back_populates="replay_to_message",
+        foreign_keys=[replay_to_message_id],
+        cascade="all, delete-orphan",
+        uselist=True,
+    )
+    attachments = relationship(
+        "ChatMessageAttachment",
+        back_populates="message",
+        cascade="all, delete-orphan",
+        uselist=True,
+    )
+
 
 class ChatMessageAttachment(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     __tablename__ = "chat_message_attachments"
@@ -45,4 +68,11 @@ class ChatMessageAttachment(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
             upload_to="vehicle/reports/chats/",
         ),
         nullable=True,
+    )
+
+    message = relationship(
+        "ChatMessage",
+        back_populates="attachments",
+        foreign_keys=[message_id],
+        uselist=False,
     )
