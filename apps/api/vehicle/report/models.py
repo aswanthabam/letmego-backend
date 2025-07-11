@@ -68,6 +68,12 @@ class VehicleReport(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         "VehicleReportStatusLog",
         back_populates="report",
     )
+    chat_messages = relationship(
+        "ChatMessage",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        uselist=True,
+    )
 
     @property
     def reporter_name(self):
