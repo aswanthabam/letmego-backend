@@ -65,5 +65,11 @@ class UserService(AbstractService):
         await self.session.refresh(user)
         return user
 
+    async def delete_user(self, user_id: UUID):
+        user = await self.get_user_by_id(user_id)
+        user.soft_delete()
+        await self.session.commit()
+        return user
+
 
 UserServiceDependency = Annotated[UserService, UserService.get_dependency()]
