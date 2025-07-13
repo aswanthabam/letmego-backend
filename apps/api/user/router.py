@@ -6,6 +6,7 @@ from apps.api.auth.service import AuthServiceDependency
 from apps.api.user.schema import PrivacyPreference, UserDetailsResponse
 from apps.api.user.service import UserServiceDependency
 from core.authentication.firebase.dependency import FirebaseAuthDependency
+from core.response.models import MessageResponse
 
 router = APIRouter(
     prefix="/user",
@@ -73,3 +74,18 @@ async def authenticate_user_endpoint(
     if not user:
         user = await auth_service.firebase_authenticate(uid=decoded_token.uid)
     return user
+
+
+@router.delete("/delete", summary="Delete user account")
+async def delete_user(
+    user: UserDependency,
+    user_service: UserServiceDependency,
+) -> MessageResponse:
+    """
+    Endpoint to delete a user account.
+    This endpoint soft deletes the user and returns the user details after deletion
+    """
+    user = await user_service.delete_user(user_id=user.id)
+    return {
+        "message": "User account deleted successfully",
+    }
