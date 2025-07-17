@@ -1,17 +1,21 @@
 from typing import Annotated
 from uuid import UUID
-
 from fastapi import UploadFile
-from sqlalchemy import select, update
+from sqlalchemy import select
+
 from apps.api.user.models import PrivacyPreference, User
 from core.architecture.service import AbstractService
+from core.db.core import SessionDep
 from core.exceptions.request import InvalidRequestException
 from core.storage.sqlalchemy.inputs.file import InputFile
 
 
 class UserService(AbstractService):
-    def __init__(self, session):
-        super().__init__(session)
+    DEPENDENCIES = {"session": SessionDep}
+
+    def __init__(self, session: SessionDep, **kwargs):
+        super().__init__(session=session, **kwargs)
+        self.session = session
 
     async def get_user_by_uid(self, uid: str, raise_exception: bool = True):
         user = await self.session.scalar(select(User).where(User.uid == uid))

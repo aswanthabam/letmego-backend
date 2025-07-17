@@ -1,5 +1,6 @@
 # apps/vehicle/router.py
 from typing import List, Optional
+from uuid import UUID
 from fastapi import APIRouter, File, UploadFile, Form
 
 from apps.api.auth.dependency import UserDependency
@@ -91,7 +92,13 @@ async def update_vehicle_endpoint(
 async def get_vehicle_endpoint(
     vehicle_service: VehicleServiceDependency, user: UserDependency, id: str
 ) -> VehicleDetailResponse:
-    return await vehicle_service.get_vehicle(vehicle_id=id, user_id=user.id)
+    try:
+        val = UUID(id, version=4)
+        if str(val) == id and val.version == 4:
+            return await vehicle_service.get_vehicle(vehicle_id=val, user_id=user.id)
+    except ValueError:
+        pass
+    return await vehicle_service.get_vehicle(vehicle_number=id, user_id=user.id)
 
 
 @router.get("/list", description="For listing all vehicles user ownes")

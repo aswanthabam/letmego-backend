@@ -16,11 +16,9 @@ vehicle_type_display_text = {
     "motorcycle": "Motorcycle",
     "truck": "Truck",
     "bus": "Bus",
-    "van": "Van",
     "suv": "SUV",
     "pickup_truck": "Pickup Truck",
     "scooter": "Scooter",
-    "bicycle": "Bicycle",
     "trailer": "Trailer",
     "rickshaw": "Rickshaw",
     "auto_rickshaw": "Auto Rickshaw",
@@ -66,11 +64,9 @@ class VehicleType(Enum):
     MOTORCYCLE = "motorcycle"
     TRUCK = "truck"
     BUS = "bus"
-    VAN = "van"
     SUV = "suv"
     PICKUP_TRUCK = "pickup_truck"
     SCOOTER = "scooter"
-    BICYCLE = "bicycle"
     TRAILER = "trailer"
     RICKSHAW = "rickshaw"
     AUTO_RICKSHAW = "auto_rickshaw"

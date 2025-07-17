@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from apps.api.vehicle.models import Vehicle
 from core.architecture.service import AbstractService
+from core.db.core import SessionDep
 from core.exceptions.authentication import (
     ForbiddenException,
 )
@@ -21,8 +22,11 @@ from core.storage.sqlalchemy.inputs.file import (
 
 
 class VehicleService(AbstractService):
-    def __init__(self, session):
-        super().__init__(session)
+    DEPENDENCIES = {"session": SessionDep}
+
+    def __init__(self, session: SessionDep, **kwargs):
+        super().__init__(session=session, **kwargs)
+        self.session = session
 
     async def create_vehicle(
         self,
@@ -87,7 +91,8 @@ class VehicleService(AbstractService):
     async def get_vehicle(
         self,
         user_id: UUID,
-        vehicle_id: UUID,
+        vehicle_id: Optional[UUID] = None,
+        vehicle_number: Optional[str] = None,
         include_deleted: bool = False,
     ) -> Optional[Vehicle]:
         """
@@ -104,7 +109,14 @@ class VehicleService(AbstractService):
         """
         query = select(Vehicle).options(joinedload(Vehicle.owner))
 
-        query = query.where(Vehicle.id == vehicle_id, Vehicle.user_id == user_id)
+        query = query.where(Vehicle.user_id == user_id)
+
+        if vehicle_number is not None:
+            vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
+            query = query.where(Vehicle.vehicle_number == vehicle_number)
+
+        if vehicle_id is not None:
+            query = query.where(Vehicle.id == vehicle_id)
 
         if not include_deleted:
             query = query.where(Vehicle.deleted_at.is_(None))
