@@ -9,13 +9,17 @@ from apps.api.chat.models import ChatMessage, ChatMessageAttachment
 from apps.api.vehicle.models import Vehicle
 from apps.api.vehicle.report.models import VehicleReport
 from core.architecture.service import AbstractService
+from core.db.core import SessionDep
 from core.exceptions.authentication import ForbiddenException
 from core.storage.sqlalchemy.inputs.file import InputFile
 
 
 class ChatService(AbstractService):
-    def __init__(self, session):
-        super().__init__(session)
+    DEPENDENCIES = {"session": SessionDep}
+
+    def __init__(self, session: SessionDep, **kwargs):
+        super().__init__(session=session, **kwargs)
+        self.session = session
 
     async def check_user_has_permission(self, user_id: UUID, report_id: UUID) -> bool:
         """

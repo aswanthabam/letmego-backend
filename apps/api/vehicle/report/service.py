@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload, joinedload
 from typing import Annotated
 
 from core.architecture.service import AbstractService
+from core.db.core import SessionDep
 from core.exceptions.authentication import ForbiddenException
 from core.exceptions.database import NotFoundException
 from core.storage.sqlalchemy.inputs.file import InputFile
@@ -22,8 +23,11 @@ from apps.api.vehicle.report.schema import (
 
 
 class ReportService(AbstractService):
-    def __init__(self, session):
-        super().__init__(session)
+    DEPENDENCIES = {"session": SessionDep}
+
+    def __init__(self, session: SessionDep, **kwargs):
+        super().__init__(session=session, **kwargs)
+        self.session = session
 
     async def get_vehicle(self, vehicle_id: UUID) -> Vehicle:
         """

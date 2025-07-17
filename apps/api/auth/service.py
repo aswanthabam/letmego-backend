@@ -3,6 +3,7 @@ from sqlalchemy import select
 
 from core.architecture.service import AbstractService
 from core.authentication.firebase.client import create_firebase_client
+from core.db.core import SessionDep
 from core.exceptions import InvalidRequestException
 from apps.api.user.models import User
 
@@ -10,8 +11,11 @@ firebase_client = create_firebase_client()
 
 
 class AuthService(AbstractService):
-    def __init__(self, session):
-        super().__init__(session)
+    DEPENDENCIES = {"session": SessionDep}
+
+    def __init__(self, session: SessionDep, **kwargs):
+        super().__init__(session=session, **kwargs)
+        self.session = session
 
     async def firebase_authenticate(self, uid: str) -> bool:
         firebase_user = firebase_client.get_user_by_uid(uid)
