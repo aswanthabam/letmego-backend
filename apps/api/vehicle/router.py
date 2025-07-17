@@ -95,10 +95,10 @@ async def get_vehicle_endpoint(
     try:
         val = UUID(id, version=4)
         if str(val) == id and val.version == 4:
-            return await vehicle_service.get_vehicle(vehicle_id=val, user_id=user.id)
+            return await vehicle_service.get_vehicle(vehicle_id=id)
     except ValueError:
         pass
-    return await vehicle_service.get_vehicle(vehicle_number=id, user_id=user.id)
+    return await vehicle_service.get_vehicle(vehicle_number=id)
 
 
 @router.get("/list", description="For listing all vehicles user ownes")
