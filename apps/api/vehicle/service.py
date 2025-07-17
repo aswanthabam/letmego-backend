@@ -90,7 +90,7 @@ class VehicleService(AbstractService):
 
     async def get_vehicle(
         self,
-        user_id: UUID,
+        user_id: UUID = None,
         vehicle_id: Optional[UUID] = None,
         vehicle_number: Optional[str] = None,
         include_deleted: bool = False,
@@ -109,11 +109,12 @@ class VehicleService(AbstractService):
         """
         query = select(Vehicle).options(joinedload(Vehicle.owner))
 
-        query = query.where(Vehicle.user_id == user_id)
+        if user_id is not None:
+            query = query.where(Vehicle.user_id == user_id)
 
         if vehicle_number is not None:
             vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
-            query = query.where(Vehicle.vehicle_number == vehicle_number)
+            query = query.where(Vehicle.vehicle_number.ilike(f"%{vehicle_number}%"))
 
         if vehicle_id is not None:
             query = query.where(Vehicle.id == vehicle_id)
