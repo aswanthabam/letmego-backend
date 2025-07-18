@@ -39,7 +39,7 @@ async def create_device_endpoint(
     description="Get a specific device by its UUID.",
 )
 async def get_device_endpoint(
-    device_id: UUID,
+    device_id: str,
     device_service: DeviceServiceDependency,
     user: UserDependency,
 ):

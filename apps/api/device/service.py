@@ -63,7 +63,7 @@ class DeviceService(AbstractService):
         await self.session.refresh(new_device)
         return new_device
 
-    async def get_device(self, device_id: PyUUID, user_id: PyUUID) -> Optional[Device]:
+    async def get_device(self, device_id: str, user_id: PyUUID) -> Optional[Device]:
         """
         Retrieves a single device by its primary ID.
         """
