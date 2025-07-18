@@ -55,3 +55,4 @@ class User(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
 
     vehicles = relationship("Vehicle", back_populates="owner")
     reports = relationship("VehicleReport", back_populates="reporter")
+    devices = relationship("Device", back_populates="user")
