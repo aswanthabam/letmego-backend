@@ -20,6 +20,7 @@ from apps.api.vehicle.report.models import (
 from apps.api.vehicle.report.schema import (
     ReportStatusEnum,
 )
+from core.utils.validations import is_valid_uuid
 
 
 class ReportService(AbstractService):
@@ -28,6 +29,17 @@ class ReportService(AbstractService):
     def __init__(self, session: SessionDep, **kwargs):
         super().__init__(session=session, **kwargs)
         self.session = session
+
+    async def get_vehicle_by_vehicle_number(self, vehicle_number: str) -> Vehicle:
+        """
+        Fetches a vehicle by its vehicle number.
+        """
+        query = select(Vehicle).where(Vehicle.vehicle_number == vehicle_number)
+        result = await self.session.execute(query)
+        vehicle = result.scalars().first()
+        if not vehicle:
+            raise NotFoundException(f"Vehicle with number {vehicle_number} not found.")
+        return vehicle
 
     async def get_vehicle(self, vehicle_id: UUID) -> Vehicle:
         """
@@ -71,13 +83,16 @@ class ReportService(AbstractService):
 
     async def report_vehicle(
         self,
-        vehicle_id: UUID,
+        vehicle_id: UUID | str,
         user: User,
         notes: Optional[str],
         images: List[UploadFile],
         is_anonymous: bool = False,
     ) -> VehicleReport:
-        vehicle = await self.get_vehicle(vehicle_id)
+        if is_valid_uuid(vehicle_id):
+            vehicle = await self.get_vehicle(vehicle_id=vehicle_id)
+        else:
+            vehicle = await self.get_vehicle_by_vehicle_number(vehicle_id)
 
         if vehicle.user_id == user.id:
             raise ForbiddenException("You cannot report your own vehicle.")
