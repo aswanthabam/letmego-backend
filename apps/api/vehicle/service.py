@@ -114,7 +114,7 @@ class VehicleService(AbstractService):
 
         if vehicle_number is not None:
             vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
-            query = query.where(Vehicle.vehicle_number.ilike(f"%{vehicle_number}%"))
+            query = query.where(Vehicle.vehicle_number.ilike(vehicle_number))
 
         if vehicle_id is not None:
             query = query.where(Vehicle.id == vehicle_id)
