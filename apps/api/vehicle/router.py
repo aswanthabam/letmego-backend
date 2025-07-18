@@ -14,6 +14,7 @@ from apps.api.vehicle.schema import (
     VehicleTypeResponse,
 )
 from core.response.models import MessageResponse
+from core.utils.validations import is_valid_uuid
 
 router = APIRouter(
     prefix="/vehicle",
@@ -92,12 +93,8 @@ async def update_vehicle_endpoint(
 async def get_vehicle_endpoint(
     vehicle_service: VehicleServiceDependency, user: UserDependency, id: str
 ) -> VehicleDetailResponse:
-    try:
-        val = UUID(id, version=4)
-        if str(val) == id and val.version == 4:
-            return await vehicle_service.get_vehicle(vehicle_id=id)
-    except ValueError:
-        pass
+    if is_valid_uuid(id):
+        return await vehicle_service.get_vehicle(vehicle_id=id)
     return await vehicle_service.get_vehicle(vehicle_number=id)
 
 
