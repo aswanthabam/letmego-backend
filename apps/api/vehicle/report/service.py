@@ -98,7 +98,7 @@ class ReportService(AbstractService):
             raise ForbiddenException("You cannot report your own vehicle.")
 
         new_report = VehicleReport(
-            vehicle_id=vehicle_id,
+            vehicle_id=vehicle.id,
             user_id=user.id,
             notes=notes,
             current_status=ReportStatusEnum.ACTIVE.value,
