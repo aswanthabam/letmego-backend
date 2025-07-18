@@ -36,7 +36,7 @@ router = APIRouter(prefix="/report", tags=["Vehicle Reports"])
 async def report_vehicle_endpoint(
     user: UserDependency,
     report_service: ReportServiceDependency,
-    vehicle_id: UUID = Form(..., description="ID of the vehicle being reported."),
+    vehicle_id: str = Form(..., description="ID of the vehicle being reported."),
     notes: Optional[str] = Form(
         None, description="Optional notes or details about the report."
     ),
