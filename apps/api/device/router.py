@@ -46,7 +46,9 @@ async def get_device_endpoint(
     """
     Retrieves the details of a single device using its unique ID.
     """
-    return await device_service.get_device(device_id=device_id, user_id=user.id)
+    return await device_service.get_device(
+        device_id=device_id, user_id=user.id, update_status=True
+    )
 
 
 # @router.patch(
