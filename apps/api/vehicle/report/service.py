@@ -1,3 +1,4 @@
+import traceback
 from typing import List, Optional
 from uuid import UUID
 from fastapi import UploadFile
@@ -5,6 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload, joinedload
 from typing import Annotated
 
+from apps.api.device.service import DeviceServiceDependency
+from apps.api.notification.schema import NotificationCategory
+from apps.api.notification.service import NotificationServiceDependency
+from apps.api.user.schema import PrivacyPreference
 from core.architecture.service import AbstractService
 from core.db.core import SessionDep
 from core.exceptions.authentication import ForbiddenException
@@ -24,11 +29,23 @@ from core.utils.validations import is_valid_uuid
 
 
 class ReportService(AbstractService):
-    DEPENDENCIES = {"session": SessionDep}
+    DEPENDENCIES = {
+        "session": SessionDep,
+        "notification_service": NotificationServiceDependency,
+        "device_service": DeviceServiceDependency,
+    }
 
-    def __init__(self, session: SessionDep, **kwargs):
+    def __init__(
+        self,
+        session: SessionDep,
+        notification_service: NotificationServiceDependency,
+        device_service: DeviceServiceDependency,
+        **kwargs,
+    ):
         super().__init__(session=session, **kwargs)
         self.session = session
+        self.notification_service = notification_service
+        self.device_service = device_service
 
     async def get_vehicle_by_vehicle_number(self, vehicle_number: str) -> Vehicle:
         """
@@ -133,6 +150,36 @@ class ReportService(AbstractService):
 
         await self.session.commit()
         await self.session.refresh(new_report)
+        if user.privacy_preference == PrivacyPreference.ANONYMOUS.value:
+            user_name = "Anonymous"
+        else:
+            user_name = user.fullname or "Unkown User"
+        notification_title = (
+            f"{user_name} reported your vehicle {vehicle.vehicle_number}"
+        )
+
+        if notes:
+            notification_body = f"{user_name}: {notes[:200]}"
+        else:
+            notification_body = "Please check the report for details."
+        try:
+            notification = await self.notification_service.create_notification(
+                user_id=vehicle.user_id,
+                title=notification_title,
+                body=notification_body,
+                notification_type=NotificationCategory.PUSH.value,
+            )
+            if notification:
+                devices = await self.device_service.get_devices(user_id=vehicle.user_id)
+                for device in devices:
+                    result = await self.notification_service.send_fcm_notification(
+                        notification_id=notification.id, device_id=device.id
+                    )
+                    print(f"Notification sent to device {device.id}: {result}")
+        except Exception as e:
+            print(f"Failed to create notification: {e}")
+            traceback.print_exc()
+
         return new_report
 
     async def get_reports(
