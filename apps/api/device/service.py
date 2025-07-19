@@ -86,7 +86,7 @@ class DeviceService(AbstractService):
             )
         device = await self.session.scalar(query)
         if device and update_status:
-            await self.update_device_status(
+            device = await self.update_device_status(
                 device_id=device.id, user_id=user_id, new_status=DeviceStatus.ACTIVE
             )
         return device
