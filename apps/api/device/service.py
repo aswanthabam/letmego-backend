@@ -71,7 +71,11 @@ class DeviceService(AbstractService):
         return new_device
 
     async def get_device(
-        self, device_id: str, user_id: PyUUID, update_status=False
+        self,
+        device_id: str,
+        user_id: PyUUID,
+        update_status=False,
+        raise_exception=False,
     ) -> Optional[Device]:
         """
         Retrieves a single device by its primary ID.
@@ -89,7 +93,7 @@ class DeviceService(AbstractService):
             device = await self.update_device_status(
                 device_id=device.id, user_id=user_id, new_status=DeviceStatus.ACTIVE
             )
-        if not device:
+        if not device and raise_exception:
             raise InvalidRequestException(f"Device with ID {device_id} not found.")
         return device
 
