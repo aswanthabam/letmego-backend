@@ -89,6 +89,8 @@ class DeviceService(AbstractService):
             device = await self.update_device_status(
                 device_id=device.id, user_id=user_id, new_status=DeviceStatus.ACTIVE
             )
+        if not device:
+            raise InvalidRequestException(f"Device with ID {device_id} not found.")
         return device
 
     async def get_devices(
