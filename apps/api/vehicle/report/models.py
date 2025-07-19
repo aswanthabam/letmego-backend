@@ -74,6 +74,21 @@ class VehicleReport(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         cascade="all, delete-orphan",
         uselist=True,
     )
+    latitude = Column(
+        String(20),
+        nullable=True,
+        doc="Latitude of the report location",
+    )
+    longitude = Column(
+        String(20),
+        nullable=True,
+        doc="Longitude of the report location",
+    )
+    location = Column(
+        String(255),
+        nullable=True,
+        doc="Human-readable location of the report",
+    )
 
     @property
     def reporter_name(self):
