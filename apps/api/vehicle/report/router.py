@@ -44,7 +44,7 @@ async def report_vehicle_endpoint(
         False, description="Whether the report should be anonymous."
     ),
     images: List[UploadFile] = File(
-        ..., description="Multiple image files to upload for the report."
+        None, description="Multiple image files to upload for the report."
     ),
 ) -> VehicleReportDetail:
     report = await report_service.report_vehicle(
