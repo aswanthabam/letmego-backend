@@ -44,8 +44,15 @@ class DeviceService(AbstractService):
         existing_device = await self.session.scalar(query)
 
         if existing_device:
-            raise InvalidRequestException(
-                f"Device with token '{device_token}' already registered."
+            return await self.update_device(
+                device_id=existing_device.id,
+                user_id=user_id,
+                device_model=device_model,
+                platform=platform,
+                os_version=os_version,
+                app_version=app_version,
+                language_code=language_code,
+                push_enabled=push_enabled,
             )
 
         new_device = Device(
