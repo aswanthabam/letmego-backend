@@ -35,14 +35,13 @@ async def create_device_endpoint(
 
 @router.get(
     "/get/{device_id}",
-    response_model=DeviceResponse,
     description="Get a specific device by its UUID.",
 )
 async def get_device_endpoint(
     device_id: str,
     device_service: DeviceServiceDependency,
     user: UserDependency,
-):
+) -> DeviceResponse:
     """
     Retrieves the details of a single device using its unique ID.
     """
