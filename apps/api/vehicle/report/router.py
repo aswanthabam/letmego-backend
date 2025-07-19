@@ -43,6 +43,15 @@ async def report_vehicle_endpoint(
     is_anonymous: bool = Form(
         False, description="Whether the report should be anonymous."
     ),
+    latitude: Optional[str] = Form(
+        None, description="Optional latitude of the report location."
+    ),
+    longitude: Optional[str] = Form(
+        None, description="Optional longitude of the report location."
+    ),
+    location: Optional[str] = Form(
+        None, description="Optional location description of the report."
+    ),
     images: List[UploadFile] = File(
         None, description="Multiple image files to upload for the report."
     ),
@@ -53,6 +62,9 @@ async def report_vehicle_endpoint(
         notes=notes,
         is_anonymous=is_anonymous,
         images=images,
+        latitude=latitude,
+        longitude=longitude,
+        location=location,
     )
     return await report_service.get_report_details(
         report_id=report.id, current_user_id=user.id

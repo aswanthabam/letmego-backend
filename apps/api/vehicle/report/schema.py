@@ -144,6 +144,9 @@ class VehicleReportDetail(VehicleReportWrapper):
     reporter: UserMin
     created_at: datetime
     updated_at: datetime
+    latitude: Optional[str] = None
+    longitude: Optional[str] = None
+    location: Optional[str] = None
     images: List[VehicleReportImageMin] = []
     status_logs: List[VehicleReportStatusLogMin] = []
 
@@ -161,5 +164,8 @@ class VehicleReportMin(VehicleReportWrapper):
     is_anonymous: bool
     notes: Optional[str] = None
     images: List[VehicleReportImageMin] = []
+    latitude: Optional[str] = None
+    longitude: Optional[str] = None
+    location: Optional[str] = None
     created_at: datetime
     updated_at: datetime

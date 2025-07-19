@@ -105,6 +105,9 @@ class ReportService(AbstractService):
         notes: Optional[str],
         images: List[UploadFile],
         is_anonymous: bool = False,
+        latitude: Optional[str] = None,
+        longitude: Optional[str] = None,
+        location: Optional[str] = None,
     ) -> VehicleReport:
         if is_valid_uuid(vehicle_id):
             vehicle = await self.get_vehicle(vehicle_id=vehicle_id)
@@ -120,6 +123,9 @@ class ReportService(AbstractService):
             notes=notes,
             current_status=ReportStatusEnum.ACTIVE.value,
             is_anonymous=is_anonymous,
+            latitude=latitude,
+            longitude=longitude,
+            location=location,
         )
         self.session.add(new_report)
         await self.session.flush()
