@@ -47,6 +47,7 @@ class NotificationService(AbstractService):
         body: str,
         notification_type: str,
         data: Optional[dict] = None,
+        image: Optional[str] = None,
         redirection_target: Optional[str] = None,
     ) -> Notification:
         """
@@ -60,6 +61,7 @@ class NotificationService(AbstractService):
             data=data,
             notification_type=notification_type,
             redirection_target=redirection_target,
+            image=image,
         )
         self.session.add(new_notification)
         await self.session.commit()
@@ -67,7 +69,10 @@ class NotificationService(AbstractService):
         return new_notification
 
     async def send_fcm_notification(
-        self, notification_id: UUID, device_id: UUID
+        self,
+        notification_id: UUID,
+        device_id: UUID,
+        additional_data: Optional[dict] = None,
     ) -> NotificationChannel:
         """
         Sends a notification via FCM and logs the attempt, handling specific FCM errors.
@@ -91,6 +96,7 @@ class NotificationService(AbstractService):
             device_id=device.id,
             channel_type="FCM_PUSH",
             status=ChannelDeliveryStatus.PENDING.value,
+            additional_data=additional_data or {},
         )
         self.session.add(channel_log)
         await self.session.flush()  # Use flush to get the ID without ending the transaction
@@ -101,7 +107,7 @@ class NotificationService(AbstractService):
             notification=FCMNotification(
                 title=notification.title,
                 body=notification.body,
-                image=notification.image.url if notification.image else None,
+                image=notification.image.get("large") if notification.image else None,
             ),
             data=notification.data,
         )

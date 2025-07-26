@@ -83,6 +83,11 @@ class NotificationChannel(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     )
 
     channel_type = Column(String(20), nullable=False, index=True)
+    additional_data = Column(
+        JSONB,
+        nullable=True,
+        comment="Optional: Additional data for the channel (e.g., Other payloads used to generate notification)",
+    )
 
     channel_specific_data = Column(
         JSONB,

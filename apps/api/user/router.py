@@ -89,3 +89,17 @@ async def delete_user(
     return {
         "message": "User account deleted successfully",
     }
+
+
+@router.post("/logout", summary="Logout user")
+async def logout_user(
+    user: UserDependency,
+    user_service: UserServiceDependency,
+    device_id: str | None = Form(None, description="Device ID to logout from"),
+) -> MessageResponse:
+    """
+    Endpoint to logout a user.
+    If a device ID is provided, it will delete the device associated with the user.
+    """
+    await user_service.logout_user(user_id=user.id, device_id=device_id)
+    return {"message": "User logged out successfully"}
