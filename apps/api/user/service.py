@@ -3,6 +3,8 @@ from uuid import UUID
 from fastapi import UploadFile
 from sqlalchemy import select
 
+from apps.api.device.schema import DeviceStatus
+from apps.api.device.service import DeviceServiceDependency
 from apps.api.user.models import PrivacyPreference, User
 from core.architecture.service import AbstractService
 from core.db.core import SessionDep
@@ -11,11 +13,14 @@ from core.storage.sqlalchemy.inputs.file import InputFile
 
 
 class UserService(AbstractService):
-    DEPENDENCIES = {"session": SessionDep}
+    DEPENDENCIES = {"session": SessionDep, "device_service": DeviceServiceDependency}
 
-    def __init__(self, session: SessionDep, **kwargs):
+    def __init__(
+        self, session: SessionDep, device_service: DeviceServiceDependency, **kwargs
+    ):
         super().__init__(session=session, **kwargs)
         self.session = session
+        self.device_service = device_service
 
     async def get_user_by_uid(self, uid: str, raise_exception: bool = True):
         user = await self.session.scalar(select(User).where(User.uid == uid))
@@ -74,6 +79,14 @@ class UserService(AbstractService):
         user.soft_delete()
         await self.session.commit()
         return user
+
+    async def logout_user(self, user_id: UUID, device_id: str | None = None):
+        if device_id:
+            user = await self.get_user_by_id(user_id)
+            await self.device_service.update_device_status(
+                device_id=device_id, user_id=user.id, new_status=DeviceStatus.LOGGED_OUT
+            )
+        # do nothing
 
 
 UserServiceDependency = Annotated[UserService, UserService.get_dependency()]

@@ -17,6 +17,7 @@ class DeviceStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
     INACTIVE = "INACTIVE"
     UNINSTALLED = "UNINSTALLED"
+    LOGGED_OUT = "LOGGED_OUT"
 
 
 class DeviceBase(BaseModel):

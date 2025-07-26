@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload, joinedload
 from typing import Annotated
 
+from apps.api.device.schema import DeviceStatus
 from apps.api.device.service import DeviceServiceDependency
 from apps.api.notification.schema import NotificationCategory
 from apps.api.notification.service import NotificationServiceDependency
@@ -176,7 +177,9 @@ class ReportService(AbstractService):
                 notification_type=NotificationCategory.PUSH.value,
             )
             if notification:
-                devices = await self.device_service.get_devices(user_id=vehicle.user_id)
+                devices = await self.device_service.get_devices(
+                    user_id=vehicle.user_id, status=DeviceStatus.ACTIVE, limit=3
+                )
                 for device in devices:
                     result = await self.notification_service.send_fcm_notification(
                         notification_id=notification.id, device_id=device.id

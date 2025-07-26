@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy import Column, String, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -12,13 +12,16 @@ from core.db.mixins import SoftDeleteMixin, TimestampsMixin
 
 class Device(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     __tablename__ = "devices"
+    __table_args__ = (
+        UniqueConstraint("device_token", "user_id", name="uq_device_token_user_id"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
     )
 
-    device_token = Column(String(250), unique=True, nullable=False, index=True)
+    device_token = Column(String(250), nullable=False, index=True)
     device_model = Column(String(50), nullable=True)
     platform = Column(String(15), nullable=False)
     os_version = Column(String(25), nullable=True)
