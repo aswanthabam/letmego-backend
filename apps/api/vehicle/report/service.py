@@ -131,6 +131,7 @@ class ReportService(AbstractService):
         self.session.add(new_report)
         await self.session.flush()
 
+        primary_image = None
         # Add images if provided
         if images:
             for image in images:
@@ -144,6 +145,8 @@ class ReportService(AbstractService):
                     unique_filename=True,
                 )
                 self.session.add(image_obj)
+                if not primary_image:
+                    primary_image = image_obj
             await self.session.flush()
 
         # Log initial status
@@ -157,6 +160,9 @@ class ReportService(AbstractService):
 
         await self.session.commit()
         await self.session.refresh(new_report)
+        if primary_image:
+            await self.session.refresh(primary_image)
+
         if user.privacy_preference == PrivacyPreference.ANONYMOUS.value:
             user_name = "Anonymous"
         else:
@@ -175,6 +181,8 @@ class ReportService(AbstractService):
                 title=notification_title,
                 body=notification_body,
                 notification_type=NotificationCategory.PUSH.value,
+                image=primary_image.image.get("large") if primary_image else None,
+                data={"type": "vehicle_report", "report_id": str(new_report.id)},
             )
             if notification:
                 devices = await self.device_service.get_devices(

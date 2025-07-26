@@ -32,6 +32,28 @@ class Image(dict):
         self.storage = storage
         super().__init__(kwargs)  # Stores URLs for variations
 
+    def __getattr__(self, item):
+        """
+        Allows access to image URLs as attributes.
+        For example, `image.original` will return the URL for the original image.
+        """
+        if self.variations["original"].startswith("http://") or self.variations[
+            "original"
+        ].startswith("https://"):
+            return self.variations.get("original")
+        return super().__getattr__(item)  # Ensure dict methods work
+
+    def get(self, item, **kwargs):
+        """
+        Allows access to image URLs as attributes.
+        For example, `image.original` will return the URL for the original image.
+        """
+        if self.variations["original"].startswith("http://") or self.variations[
+            "original"
+        ].startswith("https://"):
+            return self.variations.get("original")
+        return super().get(item, **kwargs)  # Ensure dict methods work
+
     def delete(self):
         raise NotImplementedError("Image does not support direct delete operation. ")
 
@@ -254,21 +276,26 @@ class ImageField(AbstractFileField):
         variations = {}
         variation_paths = {}
 
-        # Get URLs for all defined variations
-        for variation_key in self.variations:
-            variant_path = self._get_variant_path(path, variation_key)
-            variation_paths[variation_key] = variant_path
-            try:
-                url = self.storage.get_url(variant_path)
-                variations[variation_key] = url
-            except Exception:
-                # Gracefully handle cases where a variant might not exist
-                # (e.g., if generation failed or it was manually deleted)
-                pass
+        if path.startswith("http://") or path.startswith("https://"):
+            # If the path is already a URL, use it directly
+            variations["original"] = path
+            variation_paths["original"] = path
+        else:
+            # Get URLs for all defined variations
+            for variation_key in self.variations:
+                variant_path = self._get_variant_path(path, variation_key)
+                variation_paths[variation_key] = variant_path
+                try:
+                    url = self.storage.get_url(variant_path)
+                    variations[variation_key] = url
+                except Exception:
+                    # Gracefully handle cases where a variant might not exist
+                    # (e.g., if generation failed or it was manually deleted)
+                    pass
 
-        # Always include the original image
-        variations["original"] = self.storage.get_url(path)
-        variation_paths["original"] = path
+            # Always include the original image
+            variations["original"] = self.storage.get_url(path)
+            variation_paths["original"] = path
 
         # Return a specialized Image object for easier access to URLs and paths
         return Image(storage=self.storage, variations=variation_paths, **variations)
