@@ -163,7 +163,10 @@ class ReportService(AbstractService):
         if primary_image:
             await self.session.refresh(primary_image)
 
-        if user.privacy_preference == PrivacyPreference.ANONYMOUS.value:
+        if (
+            user.privacy_preference == PrivacyPreference.ANONYMOUS.value
+            or new_report.is_anonymous
+        ):
             user_name = "Anonymous"
         else:
             user_name = user.fullname or "Unkown User"
