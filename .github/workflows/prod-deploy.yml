@@ -100,12 +100,12 @@ jobs:
           cd $PROJECT_PATH
 
           if [ "$SYNC_CODE" = "true" ]; then
-            sudo docker compose restart backend
+            sudo docker-compose -f docker-compose.prod.yml restart backend
           fi
 
           if [ "$RESTART_BACKEND" = "true" ]; then
             echo "Restarting backend service..."
-            sudo docker-compose restart backend
+            sudo docker-compose -f docker-compose.prod.yml restart backend
           fi
 
           if [ "$SYNC_ENV" = "true" ]; then
@@ -115,39 +115,39 @@ jobs:
 
           if [ "$RESTART_AND_REBUILD" = "true" ]; then
             echo "Restarting all services..."
-            sudo docker-compose up --build -d
+            sudo docker-compose -f docker-compose.prod.yml up --build -d
           fi
 
           if [ "$RESTART_ALL" = "true" ]; then
             echo "Restarting all services..."
-            sudo docker-compose down
-            sudo docker-compose up -d
+            sudo docker-compose -f docker-compose.prod.yml down
+            sudo docker-compose -f docker-compose.prod.yml up -d
           fi
 
           if [ "$INSTALL_REQUIREMENTS" = "true" ]; then
             echo "Installing backend requirements..."
-           sudo  docker-compose exec backend pip install --no-cache-dir -r requirements.txt
+           sudo  docker-compose -f docker-compose.prod.yml exec backend pip install --no-cache-dir -r requirements.txt
           fi
 
           if [ "$RESTART_DATABASE" = "true" ]; then
             echo "Restarting and rebuilding database service..."
-            sudo docker-compose build postgres
-            sudo docker-compose up -d postgres
+            sudo docker-compose -f docker-compose.prod.yml build postgres
+            sudo docker-compose -f docker-compose.prod.yml up -d postgres
           fi
 
           if [ "$BUILD_BACKEND" = "true" ]; then
             echo "Building backend service..."
-            sudo docker-compose build backend
+            sudo docker-compose -f docker-compose.prod.yml build backend
           fi
 
           if [ "$UP_BACKEND" = "true" ]; then
             echo "Starting backend service..."
-            sudo docker-compose up backend -d 
+            sudo docker-compose -f docker-compose.prod.yml up backend -d 
           fi
 
           if [ "$MIGRATE" = "true" ]; then
             echo "Migrating database..."
-            sudo docker-compose exec backend alembic upgrade head
+            sudo docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
           fi
 
           EOF
