@@ -43,6 +43,7 @@ app.add_middleware(
 
 @app.exception_handler(AbstractException)
 async def abstract_exception_handler(request: Request, exc: AbstractException):
+    print(exc)
     return ORJSONResponse(exc.to_json(), status_code=exc.status_code)
 
 

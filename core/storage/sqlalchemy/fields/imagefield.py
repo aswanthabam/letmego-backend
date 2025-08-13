@@ -73,7 +73,7 @@ class ImageField(AbstractFileField):
         self,
         storage: Storage = None,
         upload_to: str = "uploads",
-        max_size: int = 10 * 1024 * 1024,
+        max_size: int = 30 * 1024 * 1024,
         allowed_extensions: list[str] = ["jpg", "jpeg", "png", "gif", "webp"],
         variations: dict = {},
     ):

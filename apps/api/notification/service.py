@@ -84,7 +84,11 @@ class NotificationService(AbstractService):
                 f"Notification with ID {notification_id} not found."
             )
 
-        device = await self.session.get(Device, device_id)
+        device = await self.session.scalar(
+            select(Device).where(
+                Device.id == device_id, Device.status == DeviceStatus.ACTIVE.value
+            )
+        )
         if not device or not device.device_token:
             raise NotFoundException(
                 f"Device with ID {device_id} not found or has no token."

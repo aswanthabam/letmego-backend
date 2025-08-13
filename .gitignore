@@ -6,3 +6,4 @@ firebase-secret.json
 logs
 media
 .env.dev
+.env.production
