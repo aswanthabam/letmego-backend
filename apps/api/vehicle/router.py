@@ -13,8 +13,8 @@ from apps.api.vehicle.schema import (
     VehicleType,
     VehicleTypeResponse,
 )
-from core.response.models import MessageResponse
-from core.utils.validations import is_valid_uuid
+from avcfastapi.core.fastapi.response.models import MessageResponse
+from avcfastapi.core.utils.validations.uuid import is_valid_uuid
 
 router = APIRouter(
     prefix="/vehicle",

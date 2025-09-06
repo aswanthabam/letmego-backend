@@ -3,7 +3,7 @@ import uuid
 from pydantic import Field
 
 from apps.context import get_current_user_id
-from core.response.models import CustomBaseModel
+from avcfastapi.core.fastapi.response.models import CustomBaseModel
 
 
 class PrivacyPreference(Enum):

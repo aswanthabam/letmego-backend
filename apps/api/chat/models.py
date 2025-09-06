@@ -2,10 +2,10 @@ from sqlalchemy import UUID, Column, ForeignKey, String, Text
 import sqlalchemy as sa
 from sqlalchemy.orm import relationship
 
-from core.db.base import AbstractSQLModel
-from core.db.mixins import SoftDeleteMixin, TimestampsMixin
-from core.storage.sqlalchemy.fields.filefield import FileField
 from apps.storage import default_storage
+from avcfastapi.core.database.sqlalchamey.base import AbstractSQLModel
+from avcfastapi.core.database.sqlalchamey.mixins import SoftDeleteMixin, TimestampsMixin
+from avcfastapi.core.storage.sqlalchemy.fields.filefield import FileField
 
 
 class ChatMessage(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):

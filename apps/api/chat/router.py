@@ -5,9 +5,9 @@ from fastapi.params import File
 from apps.api.auth.dependency import UserDependency
 from apps.api.chat.schema import ChatMessageListSchema
 from apps.api.chat.service import ChatServiceDependency
-from core.exceptions.request import InvalidRequestException
-from core.response.models import MessageResponse
-from core.response.pagination import (
+from avcfastapi.core.exception.request import InvalidRequestException
+from avcfastapi.core.fastapi.response.models import MessageResponse
+from avcfastapi.core.fastapi.response.pagination import (
     PaginatedResponse,
     PaginationParams,
     paginated_response,

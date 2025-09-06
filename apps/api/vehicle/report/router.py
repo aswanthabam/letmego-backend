@@ -18,7 +18,7 @@ from apps.api.vehicle.report.schema import (
     VehicleReportDetail,
     VehicleReportMin,
 )
-from core.response.pagination import (
+from avcfastapi.core.fastapi.response.pagination import (
     PaginatedResponse,
     PaginationParams,
     paginated_response,

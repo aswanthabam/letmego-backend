@@ -8,10 +8,10 @@ from sqlalchemy.orm import selectinload, joinedload
 from apps.api.chat.models import ChatMessage, ChatMessageAttachment
 from apps.api.vehicle.models import Vehicle
 from apps.api.vehicle.report.models import VehicleReport
-from core.architecture.service import AbstractService
-from core.db.core import SessionDep
-from core.exceptions.authentication import ForbiddenException
-from core.storage.sqlalchemy.inputs.file import InputFile
+from avcfastapi.core.database.sqlalchamey.core import SessionDep
+from avcfastapi.core.exception.authentication import ForbiddenException
+from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
+from avcfastapi.core.storage.sqlalchemy.inputs.file import InputFile
 
 
 class ChatService(AbstractService):

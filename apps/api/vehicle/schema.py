@@ -7,9 +7,10 @@ import re
 from typing import Optional
 
 from apps.api.user.schema import UserPrivacyWrapper
-from core.response.models import CustomBaseModel
 
 from enum import Enum
+
+from avcfastapi.core.fastapi.response.models import CustomBaseModel
 
 vehicle_type_display_text = {
     "car": "Car",

@@ -3,11 +3,10 @@ from sqlalchemy.orm import relationship
 import sqlalchemy as sa
 from enum import Enum as PyEnum
 
-from core.db.base import AbstractSQLModel
-from core.db.mixins import SoftDeleteMixin, TimestampsMixin
-from core.storage.sqlalchemy.fields.imagefield import ImageField
-
 from apps.storage import default_storage
+from avcfastapi.core.database.sqlalchamey.base import AbstractSQLModel
+from avcfastapi.core.database.sqlalchamey.mixins import SoftDeleteMixin, TimestampsMixin
+from avcfastapi.core.storage.sqlalchemy.fields.imagefield import ImageField
 
 
 class PrivacyPreference(PyEnum):

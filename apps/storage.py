@@ -1,5 +1,5 @@
 from apps.settings import settings
-from core.storage.storage_class import FileSystemStorage
+from avcfastapi.core.storage.storage_class.filestorage import FileSystemStorage
 
 default_storage = FileSystemStorage(
     volume="media",

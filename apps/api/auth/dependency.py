@@ -4,12 +4,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import load_only
 
 from apps.api.user.models import User
-from core.db.core import SessionDep
-from core.exceptions.authentication import ForbiddenException
-from core.authentication.firebase.dependency import (
-    FirebaseAuthDependency,
-)
 from apps.context import set_current_user_id
+from avcfastapi.core.authentication.firebase.dependency import FirebaseAuthDependency
+from avcfastapi.core.database.sqlalchamey.core import SessionDep
+from avcfastapi.core.exception.authentication import ForbiddenException
 
 
 async def get_current_user(

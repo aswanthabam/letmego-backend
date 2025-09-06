@@ -9,11 +9,11 @@ from apps.api.notification.schema import (
     NotificationCategory,
     NotificationStatus,
 )
-from core.db.base import AbstractSQLModel
-from core.db.fields import TZAwareDateTime
-from core.db.mixins import SoftDeleteMixin, TimestampsMixin
 from apps.storage import default_storage
-from core.storage.sqlalchemy.fields.imagefield import ImageField
+from avcfastapi.core.database.sqlalchamey.base import AbstractSQLModel
+from avcfastapi.core.database.sqlalchamey.fields import TZAwareDateTime
+from avcfastapi.core.database.sqlalchamey.mixins import SoftDeleteMixin, TimestampsMixin
+from avcfastapi.core.storage.sqlalchemy.fields.imagefield import ImageField
 
 
 class Notification(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
