@@ -6,10 +6,10 @@ from uuid import UUID as PyUUID
 
 from apps.api.device.models import Device
 from apps.api.device.schema import DeviceStatus
-from core.architecture.service import AbstractService
-from core.db.core import SessionDep
-from core.exceptions.request import InvalidRequestException
-from core.utils.validations import is_valid_uuid
+from avcfastapi.core.database.sqlalchamey.core import SessionDep
+from avcfastapi.core.exception.request import InvalidRequestException
+from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
+from avcfastapi.core.utils.validations.uuid import is_valid_uuid
 
 
 class DeviceService(AbstractService):

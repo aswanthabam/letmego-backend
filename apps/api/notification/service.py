@@ -1,7 +1,6 @@
 from sqlalchemy import select
 from typing import Optional, Annotated
 from uuid import UUID
-from datetime import datetime, timezone
 
 # Your project's specific imports
 from apps.api.notification.models import Notification, NotificationChannel
@@ -10,20 +9,20 @@ from apps.api.device.schema import (
     DeviceStatus,
 )  # To update device on unregistered token
 from apps.api.notification.schema import ChannelDeliveryStatus
-from core.architecture.service import AbstractService
-from core.db.core import SessionDep
-
-# --- Import your new FCM Core, Schemas, and Exceptions ---
-from core.exceptions.database import NotFoundException
-from core.notifications.firebase_cloud_messaging.core import FirebaseCloudMessagingCore
-from core.notifications.firebase_cloud_messaging.schema import (
-    FCMMessage,
-    FCMNotification,
-)
-from core.notifications.firebase_cloud_messaging.exceptions import (
+from avcfastapi.core.database.sqlalchamey.core import SessionDep
+from avcfastapi.core.exception.database import NotFoundException
+from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
+from avcfastapi.core.notification.firebase_cloud_messaging import fcm_client
+from avcfastapi.core.notification.firebase_cloud_messaging.exceptions import (
     FirebaseException,
     FirebaseUnregisteredTokenError,
 )
+from avcfastapi.core.notification.firebase_cloud_messaging.schema import (
+    FCMMessage,
+    FCMNotification,
+)
+
+# --- Import your new FCM Core, Schemas, and Exceptions ---
 
 
 class NotificationService(AbstractService):
@@ -38,7 +37,6 @@ class NotificationService(AbstractService):
     def __init__(self, session: SessionDep):
         super().__init__(session=session)
         self.session = session
-        self.fcm_service = FirebaseCloudMessagingCore()
 
     async def create_notification(
         self,
@@ -118,7 +116,7 @@ class NotificationService(AbstractService):
 
         # 4. Attempt to send and handle responses/exceptions
         try:
-            result = self.fcm_service.send_to_token(fcm_message)
+            result = fcm_client.send_to_token(fcm_message)
 
             # --- Handle SUCCESS from FCM ---
             channel_log.status = ChannelDeliveryStatus.SENT.value

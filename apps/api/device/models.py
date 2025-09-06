@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 import uuid
 
 from apps.api.device.schema import DeviceStatus
-from core.db.base import AbstractSQLModel
-from core.db.fields import TZAwareDateTime
-from core.db.mixins import SoftDeleteMixin, TimestampsMixin
+from avcfastapi.core.database.sqlalchamey.base import AbstractSQLModel
+from avcfastapi.core.database.sqlalchamey.fields import TZAwareDateTime
+from avcfastapi.core.database.sqlalchamey.mixins import SoftDeleteMixin, TimestampsMixin
 
 
 class Device(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):

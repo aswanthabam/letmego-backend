@@ -5,8 +5,8 @@ from apps.api.auth.dependency import UserDependency
 from apps.api.auth.service import AuthServiceDependency
 from apps.api.user.schema import PrivacyPreference, UserDetailsResponse
 from apps.api.user.service import UserServiceDependency
-from core.authentication.firebase.dependency import FirebaseAuthDependency
-from core.response.models import MessageResponse
+from avcfastapi.core.authentication.firebase.dependency import FirebaseAuthDependency
+from avcfastapi.core.fastapi.response.models import MessageResponse
 
 router = APIRouter(
     prefix="/user",

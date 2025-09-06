@@ -5,9 +5,9 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from core.db.registry import *
-from apps.settings import settings
-from core.db.base import AbstractSQLModel
+from apps.registry import *
+from avcfastapi.core.database.sqlalchamey.settings import settings
+from avcfastapi.core.database.sqlalchamey.base import AbstractSQLModel
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -10,7 +10,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-import core
+from avcfastapi.core.database.sqlalchamey import core
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.

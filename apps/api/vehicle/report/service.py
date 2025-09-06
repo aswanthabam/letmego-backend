@@ -11,11 +11,6 @@ from apps.api.device.service import DeviceServiceDependency
 from apps.api.notification.schema import NotificationCategory
 from apps.api.notification.service import NotificationServiceDependency
 from apps.api.user.schema import PrivacyPreference
-from core.architecture.service import AbstractService
-from core.db.core import SessionDep
-from core.exceptions.authentication import ForbiddenException
-from core.exceptions.database import NotFoundException
-from core.storage.sqlalchemy.inputs.file import InputFile
 from apps.api.user.models import User
 from apps.api.vehicle.models import Vehicle
 from apps.api.vehicle.report.models import (
@@ -26,7 +21,12 @@ from apps.api.vehicle.report.models import (
 from apps.api.vehicle.report.schema import (
     ReportStatusEnum,
 )
-from core.utils.validations import is_valid_uuid
+from avcfastapi.core.database.sqlalchamey.core import SessionDep
+from avcfastapi.core.exception.authentication import ForbiddenException
+from avcfastapi.core.exception.database import NotFoundException
+from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
+from avcfastapi.core.storage.sqlalchemy.inputs.file import InputFile
+from avcfastapi.core.utils.validations.uuid import is_valid_uuid
 
 
 class ReportService(AbstractService):

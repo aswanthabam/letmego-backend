@@ -9,7 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-import core
+from avcfastapi.core.database.sqlalchamey import core
 
 # revision identifiers, used by Alembic.
 revision: str = "52879fd9a8dc"

@@ -1,7 +1,7 @@
 import uuid
 from pydantic import Field
 
-from core.response.models import CustomBaseModel
+from avcfastapi.core.fastapi.response.models import CustomBaseModel
 
 
 class UserDetailsResponse(CustomBaseModel):

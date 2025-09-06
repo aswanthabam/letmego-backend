@@ -6,10 +6,10 @@ from sqlalchemy import select
 from apps.api.device.schema import DeviceStatus
 from apps.api.device.service import DeviceServiceDependency
 from apps.api.user.models import PrivacyPreference, User
-from core.architecture.service import AbstractService
-from core.db.core import SessionDep
-from core.exceptions.request import InvalidRequestException
-from core.storage.sqlalchemy.inputs.file import InputFile
+from avcfastapi.core.database.sqlalchamey.core import SessionDep
+from avcfastapi.core.exception.request import InvalidRequestException
+from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
+from avcfastapi.core.storage.sqlalchemy.inputs.file import InputFile
 
 
 class UserService(AbstractService):

@@ -12,9 +12,7 @@ class AppConfig(BaseSettings):
     S3_ACCESS_KEY: str
     S3_BUCKET: str
     S3_BASE_PATH: str
-    DATABASE_URL_SYNC: str
 
-    DATABASE_URL: str
     STORAGE_URL_PREFIX: str
 
     @property

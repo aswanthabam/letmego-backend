@@ -1,13 +1,11 @@
 from typing import Annotated
 from sqlalchemy import select
 
-from core.architecture.service import AbstractService
-from core.authentication.firebase.client import create_firebase_client
-from core.db.core import SessionDep
-from core.exceptions import InvalidRequestException
 from apps.api.user.models import User
-
-firebase_client = create_firebase_client()
+from avcfastapi.core.authentication.firebase import firebase_client
+from avcfastapi.core.database.sqlalchamey.core import SessionDep
+from avcfastapi.core.exception.request import InvalidRequestException
+from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
 
 
 class AuthService(AbstractService):

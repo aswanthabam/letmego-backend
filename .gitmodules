@@ -1,0 +1,3 @@
+[submodule "avcfastapi"]
+	path = avcfastapi
+	url = https://github.com/aswanthabam/avcfastapi.git

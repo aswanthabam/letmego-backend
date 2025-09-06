@@ -8,17 +8,11 @@ from fastapi import UploadFile
 from sqlalchemy.orm import joinedload
 
 from apps.api.vehicle.models import Vehicle
-from core.architecture.service import AbstractService
-from core.db.core import SessionDep
-from core.exceptions.authentication import (
-    ForbiddenException,
-)
-from core.exceptions.request import (
-    InvalidRequestException,
-)
-from core.storage.sqlalchemy.inputs.file import (
-    InputFile,
-)  # Replace with your actual import path
+from avcfastapi.core.database.sqlalchamey.core import SessionDep
+from avcfastapi.core.exception.authentication import ForbiddenException
+from avcfastapi.core.exception.request import InvalidRequestException
+from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
+from avcfastapi.core.storage.sqlalchemy.inputs.file import InputFile
 
 
 class VehicleService(AbstractService):
