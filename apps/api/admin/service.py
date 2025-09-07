@@ -101,6 +101,7 @@ class AdminDashboardService(AbstractService):
             .outerjoin(report_count_subq, User.id == report_count_subq.c.user_id)
             .offset(offset)
             .limit(limit)
+            .order_by(User.created_at.desc())
         )
 
         # Apply date filter for user listing itself
@@ -143,7 +144,7 @@ class AdminDashboardService(AbstractService):
             select(Vehicle, report_count_subq.c.report_count)
             .outerjoin(report_count_subq, Vehicle.id == report_count_subq.c.vehicle_id)
             .options(joinedload(Vehicle.owner))
-        )
+        ).order_by(Vehicle.created_at.desc())
 
         if user_id is not None:
             query = query.where(Vehicle.user_id == user_id)
@@ -183,7 +184,7 @@ class AdminDashboardService(AbstractService):
                 joinedload(VehicleReport.reporter),
                 joinedload(VehicleReport.vehicle).joinedload(Vehicle.owner),
             )
-        )
+        ).order_by(VehicleReport.created_at.desc())
 
         if vehicle_id is not None:
             query = query.where(VehicleReport.vehicle_id == vehicle_id)
