@@ -26,3 +26,16 @@ async def get_current_user(
 
 
 UserDependency = Annotated[User, Depends(get_current_user)]
+
+
+async def get_current_admin_user(user: UserDependency) -> User:
+    print(user.role)
+    if not user or user.role != "admin":
+        raise ForbiddenException(
+            "user not found or not authenticated.",
+            error_code="ADMIN_USER_NOT_FOUND",
+        )
+    return user
+
+
+AdminUserDependency = Annotated[User, Depends(get_current_admin_user)]
