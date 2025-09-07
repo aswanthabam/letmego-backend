@@ -71,6 +71,7 @@ class VehicleReportSchema(BaseSchema):
     status_logs: List[VehicleReportStatusLogSchema] = []
 
     reporter: Optional[UserListResponse] = None  # property from model
+    vehicle: Optional["VehicleSchema"] = None  # property from model
 
 
 # -------------------------
