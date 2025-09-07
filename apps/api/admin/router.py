@@ -96,6 +96,7 @@ async def list_reports(
     admin_dashboard_service: AdminDashboardServiceDependency,
     params: PaginationParams,
     vehicle_id: str | None = None,
+    user_id: str | None = None,
     from_date: datetime | None = Query(
         None, description="Filter from this datetime (inclusive, timezone-aware)"
     ),
@@ -105,6 +106,7 @@ async def list_reports(
 ) -> PaginatedResponse[VehicleReportSchema]:
     reports = await admin_dashboard_service.list_reports(
         vehicle_id=vehicle_id,
+        user_id=user_id,
         offset=params.offset,
         limit=params.limit,
         from_date=from_date,
