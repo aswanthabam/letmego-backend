@@ -43,6 +43,7 @@ class UserDetailsResponse(CustomBaseModel):
     id: uuid.UUID = Field(...)
     uid: str = Field(...)
     email: str | None = Field(None)
+    role: str = Field(...)
     phone_number: str | None = Field(None)
     fullname: str | None = Field(None)
     email_verified: bool = Field(False)
