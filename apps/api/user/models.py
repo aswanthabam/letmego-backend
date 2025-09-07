@@ -15,6 +15,11 @@ class PrivacyPreference(PyEnum):
     ANONYMOUS = "anonymous"
 
 
+class UserRoles(PyEnum):
+    USER = "user"
+    ADMIN = "admin"
+
+
 # -------------------------
 # 1. User Model
 # -------------------------
@@ -32,6 +37,12 @@ class User(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     email = Column(String(120), nullable=True)
     email_verified = Column(Boolean, default=False)
     phone_number = Column(String(120), nullable=True)
+    role = Column(
+        String(20),
+        default=UserRoles.USER.value,
+        nullable=False,
+        server_default=UserRoles.USER.value,
+    )
     profile_picture = Column(
         ImageField(
             storage=default_storage,
