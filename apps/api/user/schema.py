@@ -2,6 +2,7 @@ from enum import Enum
 import uuid
 from pydantic import Field
 
+from apps.api.user.models import UserStatus
 from apps.context import get_current_user_id
 from avcfastapi.core.fastapi.response.models import CustomBaseModel
 
@@ -50,3 +51,4 @@ class UserDetailsResponse(CustomBaseModel):
     profile_picture: dict | None = Field(None)
     company_name: str | None = Field(None)
     privacy_preference: PrivacyPreference | None = Field(None)
+    status: UserStatus | None = Field(None)

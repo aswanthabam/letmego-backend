@@ -3,6 +3,7 @@ from fastapi.params import File
 
 from apps.api.auth.dependency import UserDependency
 from apps.api.auth.service import AuthServiceDependency
+from apps.api.user.models import UserStatus
 from apps.api.user.schema import PrivacyPreference, UserDetailsResponse
 from apps.api.user.service import UserServiceDependency
 from avcfastapi.core.authentication.firebase.dependency import FirebaseAuthDependency
@@ -103,3 +104,13 @@ async def logout_user(
     """
     await user_service.logout_user(user_id=user.id, device_id=device_id)
     return {"message": "User logged out successfully"}
+
+
+@router.patch("/status", summary="Change user status")
+async def change_user_status(
+    user: UserDependency,
+    user_service: UserServiceDependency,
+    new_status: UserStatus = Form(..., description="New status to set for the user"),
+) -> UserDetailsResponse:
+    user = await user_service.change_user_status(user_id=user.id, new_status=new_status)
+    return user

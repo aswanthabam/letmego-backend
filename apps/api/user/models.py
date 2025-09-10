@@ -20,6 +20,12 @@ class UserRoles(PyEnum):
     ADMIN = "admin"
 
 
+class UserStatus(PyEnum):
+    REGISTERED = "registered"
+    PROFILE_COMPLETED = "profile_completed"
+    VEHICLE_ADDED = "vehicle_added"
+
+
 # -------------------------
 # 1. User Model
 # -------------------------
@@ -61,6 +67,12 @@ class User(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         default=PrivacyPreference.PUBLIC.value,
         nullable=False,
         server_default=PrivacyPreference.PUBLIC.value,
+    )
+    status = Column(
+        String(20),
+        default=UserStatus.REGISTERED.value,
+        nullable=False,
+        server_default=UserStatus.REGISTERED.value,
     )
 
     vehicles = relationship("Vehicle", back_populates="owner")
