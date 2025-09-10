@@ -46,7 +46,7 @@ class SyncUserStatusCommand(Command):
 
                 session.add(user)  # mark as dirty
                 print(
-                    f"Updated user {user.id} ({user.email} | {user.email}) from status {original_status} to {user.status}"
+                    f"Updated user {user.email} | {user.phone_number} | {user.fullname} ({user.id}) from status {original_status} to {user.status}"
                 )
 
             await session.commit()
