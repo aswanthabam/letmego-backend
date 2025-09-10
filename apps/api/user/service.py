@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from apps.api.device.schema import DeviceStatus
 from apps.api.device.service import DeviceServiceDependency
-from apps.api.user.models import PrivacyPreference, User
+from apps.api.user.models import PrivacyPreference, User, UserStatus
 from avcfastapi.core.database.sqlalchamey.core import SessionDep
 from avcfastapi.core.exception.request import InvalidRequestException
 from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
@@ -87,6 +87,12 @@ class UserService(AbstractService):
                 device_id=device_id, user_id=user.id, new_status=DeviceStatus.LOGGED_OUT
             )
         # do nothing
+
+    async def change_user_status(self, user_id: UUID, new_status: UserStatus):
+        user = await self.get_user_by_id(user_id)
+        user.status = new_status.value
+        await self.session.commit()
+        return user
 
 
 UserServiceDependency = Annotated[UserService, UserService.get_dependency()]
