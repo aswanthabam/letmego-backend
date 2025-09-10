@@ -14,6 +14,7 @@ from apps.api.auth.dependency import UserDependency
 from apps.api.vehicle.report.service import ReportServiceDependency
 from apps.api.vehicle.report.schema import (
     ReportStatusEnum,
+    VehicleReportFlagDetail,
     VehicleReportMin,
     VehicleReportDetail,
     VehicleReportMin,
@@ -166,3 +167,50 @@ async def get_report_details(
         report_id=report_id,
         current_user_id=user.id,
     )
+
+
+@router.post(
+    "/flag/create/{report_id}",
+    status_code=status.HTTP_201_CREATED,
+    summary="Flag a report",
+    description="Allows a user to flag a specific vehicle report for review.",
+)
+async def flag_report_endpoint(
+    user: UserDependency,
+    report_id: UUID,
+    report_service: ReportServiceDependency,
+    subject: str = Form(..., description="Subject of the flag"),
+    description: Optional[str] = Form(None, description="Description of the flag"),
+    image: Optional[UploadFile] = File(None, description="Optional image for the flag"),
+) -> VehicleReportFlagDetail:
+    """
+    Endpoint to flag a vehicle report for review.
+    - Requires `current_user` to be authenticated.
+    """
+    report = await report_service.flag_report(
+        report_id=report_id,
+        user_id=user.id,
+        subject=subject,
+        description=description,
+        image=image,
+    )
+    return await report_service.get_report_flag_detail(
+        flag_id=report.id, user_id=user.id
+    )
+
+
+@router.get(
+    "/flag/get/{flag_id}",
+    summary="Get flags for a report",
+    description="Retrieves all flags associated with a specific vehicle report.",
+)
+async def get_report_flags(
+    user: UserDependency,
+    flag_id: UUID,
+    report_service: ReportServiceDependency,
+) -> VehicleReportFlagDetail:
+    """
+    Endpoint to retrieve all flags for a specific vehicle report.
+    - Requires `current_user` to be authenticated.
+    """
+    return await report_service.get_report_flag_detail(flag_id=flag_id, user_id=user.id)
