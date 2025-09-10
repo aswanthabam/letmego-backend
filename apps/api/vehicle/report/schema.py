@@ -169,3 +169,24 @@ class VehicleReportMin(VehicleReportWrapper):
     location: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+
+class VehicleReportFlagMin(BaseModel):
+    id: UUID
+    subject: str
+    description: Optional[str] = None
+    reporter: UserMin
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class VehicleReportFlagDetail(VehicleReportFlagMin):
+    id: UUID
+    subject: str
+    description: Optional[str] = None
+    image: Optional[dict] = None
+    report: VehicleReportDetail
+    reporter: UserMin
+    created_at: datetime

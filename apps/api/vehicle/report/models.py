@@ -98,6 +98,10 @@ class VehicleReport(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
             return "Anonymous"
         return self.reporter.fullname
 
+    flags = relationship(
+        "VehicleReportFlag", back_populates="report", cascade="all, delete-orphan"
+    )
+
 
 # -------------------------
 # 2. Report Image Model
@@ -148,3 +152,35 @@ class VehicleReportStatusLog(AbstractSQLModel, TimestampsMixin):
     notes = Column(String(255), nullable=True)
 
     report = relationship("VehicleReport", back_populates="status_logs")
+
+
+class VehicleReportFlag(AbstractSQLModel, TimestampsMixin):
+    __tablename__ = "vehicle_report_flags"
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=sa.text("gen_random_uuid()"),
+        default=sa.text("gen_random_uuid()"),
+    )
+    report_id = Column(
+        UUID(as_uuid=True), ForeignKey("vehicle_reports.id"), nullable=False
+    )
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    subject = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    image = Column(
+        ImageField(
+            storage=default_storage,
+            upload_to="vehicle/reports/flags/images/",
+            variations={
+                "thumbnail": {"width": 150, "height": 150},
+                "medium": {"width": 500, "height": 500},
+                "large": {"width": 800, "height": 800},
+            },
+        ),
+        nullable=True,
+    )
+
+    report = relationship("VehicleReport", back_populates="flags")
+    reporter = relationship("User", back_populates="report_flags")

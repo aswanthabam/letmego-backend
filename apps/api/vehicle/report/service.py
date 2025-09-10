@@ -15,6 +15,7 @@ from apps.api.user.models import User
 from apps.api.vehicle.models import Vehicle
 from apps.api.vehicle.report.models import (
     VehicleReport,
+    VehicleReportFlag,
     VehicleReportImage,
     VehicleReportStatusLog,
 )
@@ -337,6 +338,72 @@ class ReportService(AbstractService):
             raise ForbiddenException("You do not have permission to view this report.")
 
         return report
+
+    async def get_report_flag_detail(
+        self, flag_id: UUID, user_id: UUID
+    ) -> VehicleReportFlag:
+        """
+        Fetches a vehicle report flag by its ID.
+        Args:
+            session: The SQLAlchemy AsyncSession.
+            flag_id: The UUID of the flag to fetch.
+        Returns:
+            The VehicleReportFlag object if found.
+        Raises:
+            NotFoundException: If the flag does not exist.
+        """
+        stmt = (
+            select(VehicleReportFlag)
+            .where(
+                VehicleReportFlag.id == flag_id, VehicleReportFlag.user_id == user_id
+            )
+            .options(
+                joinedload(VehicleReportFlag.report).options(
+                    joinedload(VehicleReport.vehicle).options(
+                        joinedload(Vehicle.owner)
+                    ),
+                    joinedload(VehicleReport.reporter),
+                    joinedload(VehicleReport.images),
+                    joinedload(VehicleReport.status_logs),
+                )
+            )
+            .options(joinedload(VehicleReportFlag.reporter))
+        )
+        result = await self.session.execute(stmt)
+        flag = result.scalars().first()
+
+        if not flag:
+            raise NotFoundException(f"Vehicle report flag with ID {flag_id} not found.")
+
+        return flag
+
+    async def flag_report(
+        self,
+        report_id: UUID,
+        user_id: str,
+        subject: str,
+        description: Optional[str],
+        image: Optional[UploadFile] = None,
+    ) -> VehicleReport:
+        report = await self.get_report(report_id=report_id)
+
+        flag = VehicleReportFlag(
+            report_id=report.id,
+            user_id=user_id,
+            subject=subject,
+            description=description,
+        )
+        if image:
+            flag.image = InputFile(
+                await image.read(),
+                filename=image.filename,
+                prefix_date=True,
+                unique_filename=True,
+            )
+        self.session.add(flag)
+        await self.session.commit()
+        await self.session.refresh(flag)
+        return flag
 
 
 ReportServiceDependency = Annotated[ReportService, ReportService.get_dependency()]
