@@ -32,6 +32,8 @@ class SyncUserStatusCommand(Command):
 
             for user in users:
                 original_status = user.status
+                if user.vehicles and len(user.vehicles) > 0:
+                    user.status = UserStatus.PROFILE_COMPLETED.value
                 if (
                     user.fullname
                     and user.fullname.lower() != "unknown user"
@@ -39,8 +41,6 @@ class SyncUserStatusCommand(Command):
                     and user.phone_number
                 ):
                     user.status = UserStatus.PROFILE_COMPLETED.value
-                    if user.vehicles and len(user.vehicles) > 0:
-                        user.status = UserStatus.VEHICLE_ADDED.value
                 else:
                     user.status = UserStatus.REGISTERED.value
 
