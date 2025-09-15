@@ -13,6 +13,11 @@ on:
         required: true
         default: false
         type: boolean
+      build_backend:
+        description: "Build backend service"
+        required: false
+        default: false
+        type: boolean
       restart_backend:
         description: "Restart backend service"
         required: false
@@ -20,11 +25,6 @@ on:
         type: boolean
       migrate:
         description: "Migrate database"
-        required: false
-        default: false
-        type: boolean
-      build_backend:
-        description: "Build backend service"
         required: false
         default: false
         type: boolean
@@ -65,6 +65,7 @@ jobs:
           BUILD_BACKEND: ${{ github.event.inputs.build_backend }}
           RESTART_ALL: ${{ github.event.inputs.restart_all }}
           ENV_VARS: ${{ secrets.PROD_ENV_VARIABLES }}
+          DOCKER_COMPOSE_FILE: docker-compose.prod.yml
         run: |
           if [ "$SYNC_CODE" = "true" ]; then
             rsync -avz --delete \
@@ -81,10 +82,6 @@ jobs:
           ssh -o StrictHostKeyChecking=no $USER@$REMOTE_IP <<EOF
           cd $PROJECT_PATH
 
-          if [ "$SYNC_CODE" = "true" ]; then
-            sudo docker-compose -f docker-compose.prod.yml restart backend
-          fi
-
           if [ "$SYNC_ENV" = "true" ]; then
             echo "Syncing environment variables..."
             printf "%s" "$ENV_VARS" | sudo tee .env > /dev/null
@@ -92,24 +89,24 @@ jobs:
 
           if [ "$BUILD_BACKEND" = "true" ]; then
             echo "Building backend service..."
-            sudo docker-compose -f docker-compose.prod.yml build backend
+            sudo docker-compose -f $DOCKER_COMPOSE_FILE build backend
           fi
 
           if [ "$RESTART_BACKEND" = "true" ]; then
             echo "Restarting backend service..."
-            sudo docker-compose -f docker-compose.prod.yml down backend
-            sudo docker-compose -f docker-compose.prod.yml up backend -d
+            sudo docker-compose -f $DOCKER_COMPOSE_FILE down backend
+            sudo docker-compose -f $DOCKER_COMPOSE_FILE up backend -d
           fi
 
           if [ "$RESTART_ALL" = "true" ]; then
             echo "Restarting all services..."
-            sudo docker-compose -f docker-compose.prod.yml down
-            sudo docker-compose -f docker-compose.prod.yml up -d
+            sudo docker-compose -f $DOCKER_COMPOSE_FILE down
+            sudo docker-compose -f $DOCKER_COMPOSE_FILE up -d
           fi
 
           if [ "$MIGRATE" = "true" ]; then
             echo "Migrating database..."
-            sudo docker-compose -f docker-compose.prod.yml exec backend alembic upgrade head
+            sudo docker-compose -f $DOCKER_COMPOSE_FILE exec backend alembic upgrade head
           fi
 
           EOF
