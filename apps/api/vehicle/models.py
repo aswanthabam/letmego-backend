@@ -71,8 +71,8 @@ class VehicleLocation(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     )
     vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    latitude = Column(Numeric(), nullable=False)
-    longitude = Column(Numeric(), nullable=False)
+    latitude = Column(Float(), nullable=False)
+    longitude = Column(Float(), nullable=False)
     notes = Column(String(255), nullable=True)
     image = Column(
         ImageField(
