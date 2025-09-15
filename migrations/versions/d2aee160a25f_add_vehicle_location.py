@@ -1,8 +1,9 @@
 """add vehicle location
 
-Revision ID: a3286303da23
+
+Revision ID: d2aee160a25f
 Revises: ce219849935f
-Create Date: 2025-09-14 19:22:00.750607
+Create Date: 2025-09-15 18:37:24.451558
 
 """
 
@@ -14,7 +15,7 @@ from avcfastapi.core.database.sqlalchamey import core
 import avcfastapi
 
 # revision identifiers, used by Alembic.
-revision: str = "a3286303da23"
+revision: str = "d2aee160a25f"
 down_revision: Union[str, Sequence[str], None] = "ce219849935f"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -30,8 +31,8 @@ def upgrade() -> None:
         ),
         sa.Column("vehicle_id", sa.UUID(), nullable=False),
         sa.Column("user_id", sa.UUID(), nullable=False),
-        sa.Column("latitude", sa.String(length=50), nullable=False),
-        sa.Column("longitude", sa.String(length=50), nullable=False),
+        sa.Column("latitude", sa.Numeric(), nullable=False),
+        sa.Column("longitude", sa.Numeric(), nullable=False),
         sa.Column("notes", sa.String(length=255), nullable=True),
         sa.Column(
             "image",

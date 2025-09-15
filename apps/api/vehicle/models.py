@@ -1,6 +1,6 @@
 # apps/vehicle/models.py
 
-from sqlalchemy import Column, String, Boolean, ForeignKey, UUID
+from sqlalchemy import Column, Float, Numeric, String, Boolean, ForeignKey, UUID
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
 import enum
@@ -71,8 +71,8 @@ class VehicleLocation(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     )
     vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    latitude = Column(String(50), nullable=False)
-    longitude = Column(String(50), nullable=False)
+    latitude = Column(Numeric(), nullable=False)
+    longitude = Column(Numeric(), nullable=False)
     notes = Column(String(255), nullable=True)
     image = Column(
         ImageField(
