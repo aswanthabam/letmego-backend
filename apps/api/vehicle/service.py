@@ -357,17 +357,19 @@ class VehicleService(AbstractService):
         await self.session.refresh(vehicle_location)
         return vehicle_location
 
-    async def make_vehicle_location_public(
+    async def change_vehicle_location_visibility(
         self,
         vehicle_location_id: UUID,
-        from_user_id: UUID,
+        user_id: UUID,
+        visibility: VehicleLocationVisibility,
     ):
         """
-        Make a vehicle location public.
+        Change the visibility of a vehicle location.
 
         Args:
-            vehicle_location_id: UUID of the vehicle location to make public
-            from_user_id: UUID of the user making the location public
+            vehicle_location_id: UUID of the vehicle location to change
+            from_user_id: UUID of the user making the change
+            visibility: New visibility setting for the location
 
         Returns:
             VehicleLocation: The updated vehicle location instance
@@ -376,12 +378,12 @@ class VehicleService(AbstractService):
         if not vehicle_location:
             raise InvalidRequestException("Vehicle location not found")
 
-        if vehicle_location.user_id != from_user_id:
+        if str(vehicle_location.user_id) != str(user_id):
             raise ForbiddenException(
-                "You do not have permission to make this location public."
+                "You do not have permission to change the visibility of this location."
             )
 
-        vehicle_location.visibility = VehicleLocationVisibility.PUBLIC.value
+        vehicle_location.visibility = visibility.value
         await self.session.commit()
         await self.session.refresh(vehicle_location)
         return vehicle_location

@@ -152,9 +152,9 @@ async def delete_vehicle_endpoint(
 async def add_vehicle_location_endpoint(
     user: UserDependency,
     vehicle_service: VehicleServiceDependency,
-    vehicle_id: str = Form(...),
-    latitude: str = Form(...),
-    longitude: str = Form(...),
+    vehicle_id: UUID = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
     notes: str = Form(None),
     image: UploadFile = File(None),
     visibility: VehicleLocationVisibility = Form(
@@ -174,6 +174,24 @@ async def add_vehicle_location_endpoint(
         vehicle_location_id=location.id, user_id=user.id
     )
     return location
+
+
+@router.patch(
+    "/location/change-visibility/{vehicle_location_id}",
+    description="Change vehicle location visibility",
+)
+async def change_vehicle_location_visibility_endpoint(
+    vehicle_service: VehicleServiceDependency,
+    user: UserDependency,
+    vehicle_location_id: str,
+    visibility: VehicleLocationVisibility,
+) -> VehicleLocationDetail:
+    await vehicle_service.change_vehicle_location_visibility(
+        vehicle_location_id=vehicle_location_id, user_id=user.id, visibility=visibility
+    )
+    return await vehicle_service.get_vehicle_location(
+        vehicle_location_id=vehicle_location_id, user_id=user.id
+    )
 
 
 @router.get("/location/get/{vehicle_location_id}", description="Get vehicle locations")
