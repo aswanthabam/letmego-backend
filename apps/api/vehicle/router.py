@@ -184,7 +184,7 @@ async def change_vehicle_location_visibility_endpoint(
     vehicle_service: VehicleServiceDependency,
     user: UserDependency,
     vehicle_location_id: str,
-    visibility: VehicleLocationVisibility,
+    visibility: VehicleLocationVisibility = Form(...),
 ) -> VehicleLocationDetail:
     await vehicle_service.change_vehicle_location_visibility(
         vehicle_location_id=vehicle_location_id, user_id=user.id, visibility=visibility
