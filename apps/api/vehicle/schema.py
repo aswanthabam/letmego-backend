@@ -10,6 +10,7 @@ from apps.api.user.schema import UserPrivacyWrapper
 
 from enum import Enum
 
+from apps.api.vehicle.report.schema import UserMin
 from avcfastapi.core.fastapi.response.models import CustomBaseModel
 
 vehicle_type_display_text = {
@@ -197,3 +198,26 @@ class FuelTypeResponse(CustomBaseModel):
 
     value: str
     display_name: str
+
+
+class UserMin(UserPrivacyWrapper):
+    id: UUID
+    fullname: str | None = None
+    email: str | None = None
+    phone_number: str | None = None
+    profile_picture: Optional[dict] = None
+    company_name: Optional[str] = None
+
+
+class VehicleLocationDetail(CustomBaseModel):
+    id: UUID = Field(...)
+    vehicle_id: UUID = Field(...)
+    user: UserMin = Field(...)
+    vehicle: VehicleResponseMin = Field(...)
+    latitude: str = Field(...)
+    longitude: str = Field(...)
+    notes: str | None = Field(None)
+    image: dict | None = Field(None)
+    visibility: str = Field(...)
+    created_at: datetime = Field(...)
+    updated_at: datetime = Field(...)
