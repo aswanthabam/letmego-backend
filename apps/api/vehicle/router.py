@@ -1,19 +1,27 @@
 # apps/vehicle/router.py
 from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, File, UploadFile, Form
+from fastapi import APIRouter, File, Request, UploadFile, Form
+from fastapi.responses import RedirectResponse
 
 from apps.api.auth.dependency import UserDependency
+from apps.api.vehicle.models import VehicleLocationVisibility
 from apps.api.vehicle.service import VehicleServiceDependency
 from apps.api.vehicle.schema import (
     FuelType,
     FuelTypeResponse,
     VehicleDetailResponse,
+    VehicleLocationDetail,
     VehicleResponseMin,
     VehicleType,
     VehicleTypeResponse,
 )
 from avcfastapi.core.fastapi.response.models import MessageResponse
+from avcfastapi.core.fastapi.response.pagination import (
+    PaginatedResponse,
+    PaginationParams,
+    paginated_response,
+)
 from avcfastapi.core.utils.validations.uuid import is_valid_uuid
 
 router = APIRouter(
@@ -138,3 +146,108 @@ async def delete_vehicle_endpoint(
 ) -> MessageResponse:
     await vehicle_service.delete_vehicle(vehicle_id=id, user_id=user.id)
     return {"message": "Vehicle deleted successfully"}
+
+
+@router.post("/location/add", description="Add a new vehicle location")
+async def add_vehicle_location_endpoint(
+    user: UserDependency,
+    vehicle_service: VehicleServiceDependency,
+    vehicle_id: UUID = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    notes: str = Form(None),
+    image: UploadFile = File(None),
+    visibility: VehicleLocationVisibility = Form(
+        VehicleLocationVisibility.PRIVATE.value
+    ),
+) -> VehicleLocationDetail:
+    location = await vehicle_service.save_vehicle_location(
+        vehicle_id=vehicle_id,
+        user_id=user.id,
+        latitude=latitude,
+        longitude=longitude,
+        notes=notes,
+        image=image,
+        visibility=visibility,
+    )
+    location = await vehicle_service.get_vehicle_location(
+        vehicle_location_id=location.id, user_id=user.id
+    )
+    return location
+
+
+@router.patch(
+    "/location/change-visibility/{vehicle_location_id}",
+    description="Change vehicle location visibility",
+)
+async def change_vehicle_location_visibility_endpoint(
+    vehicle_service: VehicleServiceDependency,
+    user: UserDependency,
+    vehicle_location_id: str,
+    visibility: VehicleLocationVisibility = Form(...),
+) -> VehicleLocationDetail:
+    await vehicle_service.change_vehicle_location_visibility(
+        vehicle_location_id=vehicle_location_id, user_id=user.id, visibility=visibility
+    )
+    return await vehicle_service.get_vehicle_location(
+        vehicle_location_id=vehicle_location_id, user_id=user.id
+    )
+
+
+@router.get("/location/get/{vehicle_location_id}", description="Get vehicle locations")
+async def get_vehicle_locations_endpoint(
+    vehicle_service: VehicleServiceDependency, vehicle_location_id: str
+) -> VehicleLocationDetail:
+    # currently only public locations are returned
+    return await vehicle_service.get_vehicle_location(
+        vehicle_location_id=vehicle_location_id, user_id=None
+    )
+
+
+@router.get("/location/list", description="List vehicle locations")
+async def list_vehicle_locations_endpoint(
+    request: Request,
+    vehicle_service: VehicleServiceDependency,
+    pagination: PaginationParams,
+    user: UserDependency,
+    vehicle_id: Optional[str] = None,
+    visibility: Optional[VehicleLocationVisibility] = None,
+) -> PaginatedResponse[VehicleLocationDetail]:
+    result = await vehicle_service.list_vehicle_locations(
+        user_id=user.id,
+        vehicle_id=vehicle_id,
+        visibility=visibility.value if visibility else None,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    )
+    return paginated_response(
+        request=request, result=result, schema=VehicleLocationDetail
+    )
+
+
+@router.delete(
+    "/location/delete/{vehicle_location_id}", description="Delete vehicle location"
+)
+async def delete_vehicle_location_endpoint(
+    vehicle_service: VehicleServiceDependency,
+    user: UserDependency,
+    vehicle_location_id: str,
+) -> MessageResponse:
+    await vehicle_service.delete_vehicle_location(
+        vehicle_location_id=vehicle_location_id, user_id=user.id
+    )
+    return {"message": "Vehicle location deleted successfully"}
+
+
+@router.get(
+    "/location/redirect/{vehicle_location_id}",
+    description="Redirect to corresponding page for vehicle location details",
+)
+async def redirect_to_vehicle_location_endpoint(
+    vehicle_service: VehicleServiceDependency,
+    vehicle_location_id: str,
+):
+    url = await vehicle_service.get_location_redirect_url(
+        vehicle_location_id=vehicle_location_id
+    )
+    return RedirectResponse(url=url, status_code=303)
