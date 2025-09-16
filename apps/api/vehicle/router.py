@@ -245,7 +245,7 @@ async def delete_vehicle_location_endpoint(
 )
 async def redirect_to_vehicle_location_endpoint(
     vehicle_service: VehicleServiceDependency,
-    vehicle_location_id: str,
+    vehicle_location_id: UUID,
 ):
     url = await vehicle_service.get_location_redirect_url(
         vehicle_location_id=vehicle_location_id
