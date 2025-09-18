@@ -254,6 +254,8 @@ class VehicleService(AbstractService):
                     "You do not have permission to update this vehicle."
                 )
 
+            vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
+
             # Prepare update data
             update_data = {
                 "vehicle_number": vehicle_number,
