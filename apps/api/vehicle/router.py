@@ -22,6 +22,7 @@ from avcfastapi.core.fastapi.response.pagination import (
     PaginationParams,
     paginated_response,
 )
+from avcfastapi.core.utils.network import get_client_ip
 from avcfastapi.core.utils.validations.uuid import is_valid_uuid
 
 router = APIRouter(
@@ -114,7 +115,7 @@ async def get_vehicle_endpoint(
     except Exception as e:
         exception = e
         vehicle = None
-    ip_address = request.client.host if request.client else None
+    ip_address = await get_client_ip(request)
     await vehicle_service.log_search_term(
         user_id=user.id,
         search_term=id,
@@ -165,7 +166,7 @@ async def search_vehicles_endpoint(
         limit=limit,
         offset=offset,
     )
-    ip_address = request.client.host if request.client else None
+    ip_address = await get_client_ip(request)
     await vehicle_service.log_search_term(
         user_id=user.id,
         search_term=vehicle_number,
