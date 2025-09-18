@@ -8,7 +8,12 @@ from fastapi import UploadFile
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, and_
 
-from apps.api.vehicle.models import Vehicle, VehicleLocation, VehicleLocationVisibility
+from apps.api.vehicle.models import (
+    Vehicle,
+    VehicleLocation,
+    VehicleLocationVisibility,
+    VehicleSearchLog,
+)
 from avcfastapi.core.database.sqlalchamey.core import SessionDep
 from avcfastapi.core.exception.authentication import ForbiddenException
 from avcfastapi.core.exception.request import InvalidRequestException
@@ -124,6 +129,30 @@ class VehicleService(AbstractService):
             raise InvalidRequestException("Vehicle not found")
 
         return vehicle
+
+    async def log_search_term(
+        self,
+        user_id: UUID,
+        search_term: str,
+        status: Literal["success", "not_found"],
+        latitude: float | None = None,
+        longitude: float | None = None,
+        ip_address: str | None = None,
+        result_count: int | None = None,
+    ) -> None:
+        formatted_search_term = re.sub(r"[^a-zA-Z0-9]", "", search_term).upper()
+        log_entry = VehicleSearchLog(
+            user_id=user_id,
+            search_term=search_term,
+            formatted_search_term=formatted_search_term,
+            latitude=latitude,
+            longitude=longitude,
+            ip_address=ip_address,
+            status=status,
+            result_count=result_count,
+        )
+        self.session.add(log_entry)
+        await self.session.commit()
 
     async def search_vehicle_number(
         self,
@@ -253,6 +282,8 @@ class VehicleService(AbstractService):
                 raise ForbiddenException(
                     "You do not have permission to update this vehicle."
                 )
+
+            vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
 
             # Prepare update data
             update_data = {

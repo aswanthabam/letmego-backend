@@ -1,6 +1,14 @@
 # apps/vehicle/models.py
 
-from sqlalchemy import Column, Float, Numeric, String, Boolean, ForeignKey, UUID
+from sqlalchemy import (
+    Column,
+    Float,
+    Integer,
+    String,
+    Boolean,
+    ForeignKey,
+    UUID,
+)
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
 import enum
@@ -15,6 +23,11 @@ class VehicleLocationVisibility(enum.Enum):
     PUBLIC = "public"
     PRIVATE = "private"
     # INVITE_ONLY = "invite_only"
+
+
+class SearchTermStatus(enum.Enum):
+    SUCCESS = "success"
+    NOT_FOUND = "not_found"
 
 
 # -------------------------
@@ -94,3 +107,23 @@ class VehicleLocation(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
 
     vehicle = relationship("Vehicle", back_populates="locations")
     user = relationship("User", back_populates="vehicle_locations")
+
+
+class VehicleSearchLog(AbstractSQLModel, TimestampsMixin):
+    __tablename__ = "vehicle_search_logs"
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=sa.text("gen_random_uuid()"),
+        default=sa.text("gen_random_uuid()"),
+    )
+    status = Column(String(50), nullable=False, index=True)
+    search_term = Column(String(100), nullable=False)
+    formatted_search_term = Column(String(100), nullable=False)
+    latitude = Column(Float(), nullable=True)
+    longitude = Column(Float(), nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    result_count = Column(Integer, nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
+    user = relationship("User")

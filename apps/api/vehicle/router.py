@@ -124,20 +124,34 @@ async def list_vehicles_endpoint(
 
 @router.get("/search", description="Search vehicles")
 async def search_vehicles_endpoint(
+    request: Request,
     vehicle_service: VehicleServiceDependency,
     user: UserDependency,
     vehicle_number: str,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
     limit: int = 10,
     offset: int = 0,
 ) -> List[VehicleResponseMin]:
     """
     Search for vehicles by vehicle number.
     """
-    return await vehicle_service.search_vehicle_number(
+    response = await vehicle_service.search_vehicle_number(
         vehicle_number=vehicle_number,
         limit=limit,
         offset=offset,
     )
+    ip_address = request.client.host if request.client else None
+    await vehicle_service.log_search_term(
+        user_id=user.id,
+        search_term=vehicle_number,
+        status=len(response) > 0 and "success" or "not_found",
+        latitude=latitude,
+        longitude=longitude,
+        ip_address=ip_address,
+        result_count=len(response),
+    )
+    return response
 
 
 @router.delete("/delete/{id}", description="Delete vehicle")
