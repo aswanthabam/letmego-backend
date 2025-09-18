@@ -234,6 +234,24 @@ class AdminDashboardService(AbstractService):
         result = await self.session.execute(query)
         return result.scalars().all()
 
+    async def count_search_logs(
+        self,
+        status: Optional[SearchTermStatus] = None,
+        from_date: Optional[datetime] = None,
+        to_date: Optional[datetime] = None,
+    ) -> int:
+        query = select(func.count(VehicleSearchLog.id))
+
+        date_cond = self._date_filter(VehicleSearchLog.created_at, from_date, to_date)
+        if date_cond is not None:
+            query = query.where(date_cond)
+
+        if status:
+            query = query.where(VehicleSearchLog.status == status.value)
+
+        result = await self.session.execute(query)
+        return result.scalar_one()
+
 
 AdminDashboardServiceDependency = Annotated[
     AdminDashboardService, AdminDashboardService.get_dependency()

@@ -36,11 +36,21 @@ async def get_statistics(
         from_date, to_date
     )
     total_reports = await admin_dashboard_service.get_reports_count(from_date, to_date)
+    success_total_search_terms = await admin_dashboard_service.count_search_logs(
+        from_date=from_date, to_date=to_date, status=SearchTermStatus.SUCCESS
+    )
+    not_found_total_search_terms = await admin_dashboard_service.count_search_logs(
+        from_date=from_date, to_date=to_date, status=SearchTermStatus.NOT_FOUND
+    )
 
     return {
         "total_users": total_users,
         "total_vehicles": total_vehicles,
         "total_reports": total_reports,
+        "total_search_terms": {
+            "success": success_total_search_terms,
+            "not_found": not_found_total_search_terms,
+        },
     }
 
 
