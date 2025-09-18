@@ -22,6 +22,7 @@ from avcfastapi.core.fastapi.response.pagination import (
     PaginationParams,
     paginated_response,
 )
+from avcfastapi.core.utils.network import get_client_ip
 from avcfastapi.core.utils.validations.uuid import is_valid_uuid
 
 router = APIRouter(
@@ -99,11 +100,35 @@ async def update_vehicle_endpoint(
 
 @router.get("/get/{id}", description="Get vehicle details by ID")
 async def get_vehicle_endpoint(
-    vehicle_service: VehicleServiceDependency, user: UserDependency, id: str
+    request: Request,
+    vehicle_service: VehicleServiceDependency,
+    user: UserDependency,
+    id: str,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
 ) -> VehicleDetailResponse:
     if is_valid_uuid(id):
         return await vehicle_service.get_vehicle(vehicle_id=id)
-    return await vehicle_service.get_vehicle(vehicle_number=id)
+    exception = None
+    try:
+        vehicle = await vehicle_service.get_vehicle(vehicle_number=id)
+    except Exception as e:
+        exception = e
+        vehicle = None
+    ip_address = await get_client_ip(request)
+    await vehicle_service.log_search_term(
+        user_id=user.id,
+        search_term=id,
+        status="success" if vehicle else "not_found",
+        latitude=latitude,
+        longitude=longitude,
+        ip_address=ip_address,
+        result_count=int(bool(vehicle)),
+    )
+    if vehicle:
+        return vehicle
+    else:
+        raise exception
 
 
 @router.get("/list", description="For listing all vehicles user ownes")
@@ -141,7 +166,7 @@ async def search_vehicles_endpoint(
         limit=limit,
         offset=offset,
     )
-    ip_address = request.client.host if request.client else None
+    ip_address = await get_client_ip(request)
     await vehicle_service.log_search_term(
         user_id=user.id,
         search_term=vehicle_number,
