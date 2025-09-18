@@ -1,11 +1,11 @@
-from typing import Annotated
+from typing import Annotated, List, Optional
 from datetime import datetime
 import uuid
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload, joinedload
 
 from apps.api.user.models import User
-from apps.api.vehicle.models import Vehicle
+from apps.api.vehicle.models import SearchTermStatus, Vehicle, VehicleSearchLog
 from apps.api.vehicle.report.models import VehicleReport
 from avcfastapi.core.database.sqlalchamey.core import SessionDep
 from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
@@ -200,6 +200,36 @@ class AdminDashboardService(AbstractService):
             query = query.where(report_date_cond)
 
         query = query.offset(offset).limit(limit)
+
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
+    async def get_search_logs(
+        self,
+        status: Optional[SearchTermStatus] = None,
+        user_id: Optional[uuid.UUID] = None,
+        limit: Optional[int] = 10,
+        offset: int = 0,
+        from_date: Optional[datetime] = None,
+        to_date: Optional[datetime] = None,
+    ) -> List[VehicleSearchLog]:
+        query = select(VehicleSearchLog).options(joinedload(VehicleSearchLog.user))
+
+        date_cond = self._date_filter(VehicleSearchLog.created_at, from_date, to_date)
+        if date_cond is not None:
+            query = query.where(date_cond)
+
+        if status:
+            query = query.where(VehicleSearchLog.status == status.value)
+
+        if user_id:
+            query = query.where(VehicleSearchLog.user_id == user_id)
+
+        if offset and offset > 0:
+            query = query.offset(offset)
+
+        if limit and limit > 0:
+            query = query.limit(limit)
 
         result = await self.session.execute(query)
         return result.scalars().all()

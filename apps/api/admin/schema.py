@@ -128,3 +128,17 @@ class VehicleWithCountsSchema(CustomBaseModel):
 
     class Config:
         from_attributes = True
+
+
+class VehicleSearchLogResponse(CustomBaseModel):
+    id: UUID = Field(...)
+    status: str = Field(...)
+    search_term: str = Field(...)
+    formatted_search_term: str = Field(...)
+    latitude: float | None = Field(None)
+    longitude: float | None = Field(None)
+    ip_address: str | None = Field(None)
+    result_count: int | None = Field(None)
+    user: UserSchema | None = Field(None)
+    created_at: datetime = Field(...)
+    updated_at: datetime = Field(...)
