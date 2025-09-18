@@ -99,11 +99,35 @@ async def update_vehicle_endpoint(
 
 @router.get("/get/{id}", description="Get vehicle details by ID")
 async def get_vehicle_endpoint(
-    vehicle_service: VehicleServiceDependency, user: UserDependency, id: str
+    request: Request,
+    vehicle_service: VehicleServiceDependency,
+    user: UserDependency,
+    id: str,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
 ) -> VehicleDetailResponse:
     if is_valid_uuid(id):
         return await vehicle_service.get_vehicle(vehicle_id=id)
-    return await vehicle_service.get_vehicle(vehicle_number=id)
+    exception = None
+    try:
+        vehicle = await vehicle_service.get_vehicle(vehicle_number=id)
+    except Exception as e:
+        exception = e
+        vehicle = None
+    ip_address = request.client.host if request.client else None
+    await vehicle_service.log_search_term(
+        user_id=user.id,
+        search_term=id,
+        status="success" if vehicle else "not_found",
+        latitude=latitude,
+        longitude=longitude,
+        ip_address=ip_address,
+        result_count=int(bool(vehicle)),
+    )
+    if vehicle:
+        return vehicle
+    else:
+        raise exception
 
 
 @router.get("/list", description="For listing all vehicles user ownes")
