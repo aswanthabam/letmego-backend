@@ -145,4 +145,4 @@ class ShopService(AbstractService):
         return True
 
 
-ShopServiceDependency = Annotated[ShopService, ShopService.as_dependency()]
+ShopServiceDependency = Annotated[ShopService, ShopService.get_dependency()]

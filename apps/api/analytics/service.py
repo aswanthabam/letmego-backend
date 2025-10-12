@@ -175,4 +175,4 @@ class AnalyticsService(AbstractService):
         return list(events), total
 
 
-AnalyticsServiceDependency = Annotated[AnalyticsService, AnalyticsService.as_dependency()]
+AnalyticsServiceDependency = Annotated[AnalyticsService, AnalyticsService.get_dependency()]
