@@ -287,4 +287,4 @@ class ApartmentService(AbstractService):
         return list(vehicles), total
 
 
-ApartmentServiceDependency = Annotated[ApartmentService, ApartmentService.as_dependency()]
+ApartmentServiceDependency = Annotated[ApartmentService, ApartmentService.get_dependency()]
