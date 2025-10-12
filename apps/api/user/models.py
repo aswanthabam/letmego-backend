@@ -18,7 +18,6 @@ class PrivacyPreference(PyEnum):
 class UserRoles(PyEnum):
     USER = "user"
     ADMIN = "admin"
-    APARTMENT_ADMIN = "apartment_admin"
 
 
 class UserStatus(PyEnum):

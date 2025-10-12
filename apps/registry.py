@@ -4,6 +4,3 @@ from apps.api.user.models import *
 from apps.api.vehicle.report.models import *
 from apps.api.device.models import *
 from apps.api.notification.models import *
-from apps.api.shop.models import *
-from apps.api.analytics.models import *
-from apps.api.apartment.models import *
