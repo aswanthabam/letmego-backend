@@ -79,7 +79,7 @@ async def test_cta_analytics():
                 event_type=event_type,
                 event_context="test_context",
                 ip_address="127.0.0.1",
-                metadata={"test": True, "index": i}
+                event_metadata={"test": True, "index": i}
             )
             session.add(event)
             events.append(event)
