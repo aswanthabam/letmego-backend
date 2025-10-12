@@ -82,7 +82,8 @@ class VehicleLocation(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         server_default=sa.text("gen_random_uuid()"),
         default=sa.text("gen_random_uuid()"),
     )
-    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=False)
+    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=True)
+    vehicle_number = Column(String(20), nullable=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     latitude = Column(Float(), nullable=False)
     longitude = Column(Float(), nullable=False)

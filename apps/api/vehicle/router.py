@@ -191,7 +191,7 @@ async def delete_vehicle_endpoint(
 async def add_vehicle_location_endpoint(
     user: UserDependency,
     vehicle_service: VehicleServiceDependency,
-    vehicle_id: UUID = Form(...),
+    vehicle_number: str = Form(..., min_length=3, max_length=36),
     latitude: float = Form(...),
     longitude: float = Form(...),
     notes: str = Form(None),
@@ -201,7 +201,7 @@ async def add_vehicle_location_endpoint(
     ),
 ) -> VehicleLocationDetail:
     location = await vehicle_service.save_vehicle_location(
-        vehicle_id=vehicle_id,
+        vehicle_number=vehicle_number,
         user_id=user.id,
         latitude=latitude,
         longitude=longitude,

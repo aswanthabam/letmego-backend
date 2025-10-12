@@ -19,6 +19,7 @@ from avcfastapi.core.exception.authentication import ForbiddenException
 from avcfastapi.core.exception.request import InvalidRequestException
 from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
 from avcfastapi.core.storage.sqlalchemy.inputs.file import InputFile
+from avcfastapi.core.utils.validations.uuid import is_valid_uuid
 
 
 class VehicleService(AbstractService):
@@ -345,7 +346,7 @@ class VehicleService(AbstractService):
 
     async def save_vehicle_location(
         self,
-        vehicle_id: UUID,
+        vehicle_number: str,
         user_id: UUID,
         latitude: str,
         longitude: str,
@@ -368,8 +369,23 @@ class VehicleService(AbstractService):
         Returns:
             VehicleLocation: Created vehicle location instance
         """
+        if is_valid_uuid(vehicle_number):
+            query = select(Vehicle).where(Vehicle.id == vehicle_number)
+        else:
+            vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
+            query = select(Vehicle).where(
+                and_(
+                    Vehicle.vehicle_number.ilike(vehicle_number),
+                )
+            )
+        vehicle = (await self.session.execute(query)).scalar()
+
+        if len(vehicle_number) > 20 and not vehicle:
+            raise InvalidRequestException("Invalid vehicle number.")
+
         vehicle_location = VehicleLocation(
-            vehicle_id=vehicle_id,
+            vehicle_id=vehicle.id if vehicle else None,
+            vehicle_number=vehicle.vehicle_number if vehicle else vehicle_number,
             user_id=user_id,
             latitude=latitude,
             longitude=longitude,

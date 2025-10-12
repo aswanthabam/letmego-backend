@@ -211,9 +211,10 @@ class UserMin(UserPrivacyWrapper):
 
 class VehicleLocationDetail(CustomBaseModel):
     id: UUID = Field(...)
-    vehicle_id: UUID = Field(...)
+    vehicle_id: UUID | None = Field(None)
+    vehicle_number: str | None = Field(None)
     user: UserMin = Field(...)
-    vehicle: VehicleResponseMin = Field(...)
+    vehicle: VehicleResponseMin | None = Field(None)
     latitude: float = Field(...)
     longitude: float = Field(...)
     notes: str | None = Field(None)
