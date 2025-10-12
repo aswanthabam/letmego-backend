@@ -44,7 +44,7 @@ class AnalyticsService(AbstractService):
             event_context=event_data.event_context,
             related_entity_id=event_data.related_entity_id,
             related_entity_type=event_data.related_entity_type,
-            metadata=event_data.metadata,
+            event_metadata=event_data.event_metadata,
             ip_address=ip_address,
             user_agent=user_agent,
         )

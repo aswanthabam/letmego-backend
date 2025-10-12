@@ -42,7 +42,7 @@ class CallToActionEvent(AbstractSQLModel, TimestampsMixin):
         String(50),
         nullable=True
     )  # Type of entity ("shop", "vehicle", "user", etc.)
-    metadata = Column(
+    event_metadata = Column(
         JSON,
         nullable=True
     )  # Additional metadata as JSON

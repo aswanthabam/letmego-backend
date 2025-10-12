@@ -47,7 +47,7 @@ def upgrade():
         sa.Column('event_context', sa.String(length=200), nullable=True),
         sa.Column('related_entity_id', sa.UUID(), nullable=True),
         sa.Column('related_entity_type', sa.String(length=50), nullable=True),
-        sa.Column('metadata', sa.JSON(), nullable=True),
+        sa.Column('event_metadata', sa.JSON(), nullable=True),
         sa.Column('ip_address', sa.String(length=45), nullable=True),
         sa.Column('user_agent', sa.String(length=500), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.func.now()),

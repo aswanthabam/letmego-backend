@@ -14,7 +14,7 @@ class CTAEventCreate(CustomBaseModel):
     event_context: Optional[str] = Field(None, max_length=200, description="Context of the event")
     related_entity_id: Optional[UUID] = Field(None, description="ID of related entity")
     related_entity_type: Optional[str] = Field(None, max_length=50, description="Type of related entity")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    event_metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
 
 class CTAEventResponse(CustomBaseModel):
@@ -25,7 +25,7 @@ class CTAEventResponse(CustomBaseModel):
     event_context: Optional[str]
     related_entity_id: Optional[UUID]
     related_entity_type: Optional[str]
-    metadata: Optional[Dict[str, Any]]
+    event_metadata: Optional[Dict[str, Any]]
     ip_address: Optional[str]
     created_at: datetime
 
