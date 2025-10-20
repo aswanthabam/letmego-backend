@@ -105,7 +105,7 @@ class ApartmentService(AbstractService):
                 error_code="APARTMENT_NOT_FOUND",
             )
 
-        await apartment.soft_delete(self.session)
+        await apartment.soft_delete()
         await self.session.commit()
         return True
 
