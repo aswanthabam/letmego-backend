@@ -35,7 +35,7 @@ async def get_optional_user(
     """Get current user if authenticated, None otherwise."""
     if not decoded_token:
         return None
-    
+
     user = await session.scalar(select(User).where(User.uid == decoded_token.uid))
     return user
 
@@ -55,11 +55,11 @@ async def track_cta_event(
     # Extract IP and user agent from request
     ip_address = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
-    
+
     # Get user if authenticated
     user = await get_optional_user(session, decoded_token)
     user_id = user.id if user else None
-    
+
     event = await analytics_service.track_cta_event(
         event_data=event_data,
         user_id=user_id,
@@ -73,10 +73,16 @@ async def track_cta_event(
 async def get_cta_analytics(
     admin: AdminUserDependency,
     analytics_service: AnalyticsServiceDependency,
-    start_date: Optional[datetime] = Query(None, description="Filter from this date (ISO format)"),
-    end_date: Optional[datetime] = Query(None, description="Filter until this date (ISO format)"),
+    start_date: Optional[datetime] = Query(
+        None, description="Filter from this date (ISO format)"
+    ),
+    end_date: Optional[datetime] = Query(
+        None, description="Filter until this date (ISO format)"
+    ),
     event_type: Optional[str] = Query(None, description="Filter by event type"),
-    related_entity_type: Optional[str] = Query(None, description="Filter by entity type"),
+    related_entity_type: Optional[str] = Query(
+        None, description="Filter by entity type"
+    ),
 ) -> CTAAnalyticsResponse:
     """
     Get aggregated CTA analytics with optional time period and other filters.
@@ -112,8 +118,7 @@ async def get_cta_events(
         event_type=event_type,
     )
     return paginated_response(
-        data=[CTAEventResponse.model_validate(event) for event in events],
-        total=total,
-        page=pagination.page,
-        limit=pagination.limit,
+        result=[CTAEventResponse.model_validate(event) for event in events],
+        request=pagination.request,
+        schema=CTAEventResponse,
     )

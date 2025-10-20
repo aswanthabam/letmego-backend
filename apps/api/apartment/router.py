@@ -31,6 +31,7 @@ router = APIRouter(
 
 # ===== Apartment CRUD (Super Admin only) =====
 
+
 @router.post("/create", description="Create a new apartment (Super Admin only)")
 async def create_apartment(
     admin: AdminUserDependency,
@@ -60,10 +61,9 @@ async def get_all_apartments(
         limit=pagination.limit,
     )
     return paginated_response(
-        data=[ApartmentResponse.model_validate(apt) for apt in apartments],
-        total=total,
-        page=pagination.page,
-        limit=pagination.limit,
+        result=[ApartmentResponse.model_validate(apt) for apt in apartments],
+        request=pagination.request,
+        schema=ApartmentResponse,
     )
 
 
@@ -91,16 +91,21 @@ async def get_apartment(
     apartment = await apartment_service.get_apartment(apartment_id)
     if not apartment:
         from avcfastapi.core.exception.request import InvalidRequestException
-        raise InvalidRequestException("Apartment not found", error_code="APARTMENT_NOT_FOUND")
-    
+
+        raise InvalidRequestException(
+            "Apartment not found", error_code="APARTMENT_NOT_FOUND"
+        )
+
     # Verify admin has access to this apartment
     if apartment_admin.role != "admin":  # Super admin can access all
         apartment_service.verify_apartment_admin(apartment, apartment_admin.id)
-    
+
     return ApartmentResponse.model_validate(apartment)
 
 
-@router.put("/{apartment_id}", description="Update apartment details (Super Admin only)")
+@router.put(
+    "/{apartment_id}", description="Update apartment details (Super Admin only)"
+)
 async def update_apartment(
     admin: AdminUserDependency,
     apartment_service: ApartmentServiceDependency,
@@ -131,9 +136,10 @@ async def delete_apartment(
 
 # ===== Permitted Vehicle Management (Apartment Admin) =====
 
+
 @router.post(
     "/{apartment_id}/vehicles/add",
-    description="Add a vehicle to permitted parking list"
+    description="Add a vehicle to permitted parking list",
 )
 async def add_permitted_vehicle(
     apartment_admin: ApartmentAdminDependency,
@@ -155,7 +161,7 @@ async def add_permitted_vehicle(
 
 @router.delete(
     "/{apartment_id}/vehicles/{vehicle_id}",
-    description="Remove a vehicle from permitted parking list"
+    description="Remove a vehicle from permitted parking list",
 )
 async def remove_permitted_vehicle(
     apartment_admin: ApartmentAdminDependency,
@@ -177,7 +183,7 @@ async def remove_permitted_vehicle(
 
 @router.get(
     "/{apartment_id}/vehicles/check/{vehicle_id}",
-    description="Check if a vehicle is permitted"
+    description="Check if a vehicle is permitted",
 )
 async def check_vehicle_permission(
     apartment_admin: ApartmentAdminDependency,
@@ -194,7 +200,7 @@ async def check_vehicle_permission(
         vehicle_id=vehicle_id,
         admin_id=apartment_admin.id,
     )
-    
+
     if permission:
         return VehiclePermissionCheckResponse(
             is_permitted=True,
@@ -209,7 +215,7 @@ async def check_vehicle_permission(
 
 @router.get(
     "/{apartment_id}/vehicles/list",
-    description="Get all permitted vehicles for an apartment"
+    description="Get all permitted vehicles for an apartment",
 )
 async def get_permitted_vehicles(
     apartment_admin: ApartmentAdminDependency,
@@ -228,8 +234,7 @@ async def get_permitted_vehicles(
         limit=pagination.limit,
     )
     return paginated_response(
-        data=[PermittedVehicleResponse.model_validate(v) for v in vehicles],
-        total=total,
-        page=pagination.page,
-        limit=pagination.limit,
+        result=[PermittedVehicleResponse.model_validate(v) for v in vehicles],
+        request=pagination.request,
+        schema=PermittedVehicleResponse,
     )

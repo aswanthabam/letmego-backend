@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 
 from apps.api.auth.dependency import AdminUserDependency
 from apps.api.shop.service import ShopServiceDependency
@@ -36,6 +36,7 @@ async def create_shop(
 
 @router.get("/list", description="Get list of shops")
 async def get_shops(
+    request: Request,
     shop_service: ShopServiceDependency,
     pagination: PaginationParams,
     category: Optional[str] = Query(None, description="Filter by category"),
@@ -51,10 +52,9 @@ async def get_shops(
         is_active=is_active,
     )
     return paginated_response(
-        data=[ShopResponse.model_validate(shop) for shop in shops],
-        total=total,
-        page=pagination.page,
-        limit=pagination.limit,
+        result=[ShopResponse.model_validate(shop) for shop in shops],
+        request=request,
+        schema=ShopResponse,
     )
 
 
@@ -69,6 +69,7 @@ async def get_shop(
     shop = await shop_service.get_shop(shop_id)
     if not shop:
         from avcfastapi.core.exception.request import InvalidRequestException
+
         raise InvalidRequestException("Shop not found", error_code="SHOP_NOT_FOUND")
     return ShopResponse.model_validate(shop)
 
