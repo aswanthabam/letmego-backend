@@ -29,7 +29,7 @@ class ApartmentService(AbstractService):
         self.session = session
 
     # ===== Apartment Management =====
-    
+
     async def create_apartment(self, apartment_data: ApartmentCreate) -> Apartment:
         """
         Create a new apartment (Super admin only).
@@ -53,8 +53,7 @@ class ApartmentService(AbstractService):
         """Get all apartments managed by a specific admin."""
         result = await self.session.execute(
             select(Apartment).where(
-                Apartment.admin_id == admin_id,
-                Apartment.deleted_at.is_(None)
+                Apartment.admin_id == admin_id, Apartment.deleted_at.is_(None)
             )
         )
         return list(result.scalars().all())
@@ -106,7 +105,7 @@ class ApartmentService(AbstractService):
                 error_code="APARTMENT_NOT_FOUND",
             )
 
-        await apartment.delete(self.session)
+        await apartment.soft_delete(self.session)
         await self.session.commit()
         return True
 
@@ -136,7 +135,7 @@ class ApartmentService(AbstractService):
                 "Apartment not found",
                 error_code="APARTMENT_NOT_FOUND",
             )
-        
+
         self.verify_apartment_admin(apartment, admin_id)
 
         # Verify vehicle exists
@@ -184,7 +183,7 @@ class ApartmentService(AbstractService):
                 "Apartment not found",
                 error_code="APARTMENT_NOT_FOUND",
             )
-        
+
         self.verify_apartment_admin(apartment, admin_id)
 
         # Find and delete the permitted vehicle record
@@ -198,7 +197,7 @@ class ApartmentService(AbstractService):
             )
         )
         permitted_vehicle = result.scalar_one_or_none()
-        
+
         if not permitted_vehicle:
             raise InvalidRequestException(
                 "Vehicle permission record not found",
@@ -225,7 +224,7 @@ class ApartmentService(AbstractService):
                 "Apartment not found",
                 error_code="APARTMENT_NOT_FOUND",
             )
-        
+
         self.verify_apartment_admin(apartment, admin_id)
 
         result = await self.session.execute(
@@ -258,7 +257,7 @@ class ApartmentService(AbstractService):
                 "Apartment not found",
                 error_code="APARTMENT_NOT_FOUND",
             )
-        
+
         self.verify_apartment_admin(apartment, admin_id)
 
         query = select(ApartmentPermittedVehicle).where(
@@ -287,4 +286,6 @@ class ApartmentService(AbstractService):
         return list(vehicles), total
 
 
-ApartmentServiceDependency = Annotated[ApartmentService, ApartmentService.get_dependency()]
+ApartmentServiceDependency = Annotated[
+    ApartmentService, ApartmentService.get_dependency()
+]
