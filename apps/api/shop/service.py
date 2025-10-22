@@ -140,7 +140,7 @@ class ShopService(AbstractService):
             )
 
         # Soft delete using the mixin
-        await shop.delete(self.session)
+        shop.soft_delete()
         await self.session.commit()
         return True
 
