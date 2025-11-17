@@ -154,6 +154,8 @@ class StaffResponse(CustomBaseModel):
     slot_id: UUID
     user_id: UUID
     role: StaffRole
+    email: Optional[str] = None  # NEW: User email
+    name: Optional[str] = None   # NEW: User name
     created_at: datetime
 
     class Config:

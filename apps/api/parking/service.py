@@ -1,5 +1,3 @@
-# apps/api/parking/service.py
-
 from sqlalchemy import select, func, and_, or_
 import sqlalchemy as sa
 from sqlalchemy.orm import joinedload, selectinload
@@ -26,15 +24,15 @@ from apps.api.parking.schema import (
     ParkingSlotCreate,
     ParkingSlotUpdate,
     StaffAdd,
-    StaffAddByEmail,  # NEW
+    StaffAddByEmail,
     SessionCheckIn,
     SessionCheckOut,
     DueCollect,
     SlotVerification,
     SlotAvailability,
-    TransactionHistoryItem,  # NEW
-    VehicleTransactionHistory,  # NEW
-    SlotBasicInfo,  # NEW
+    TransactionHistoryItem,
+    VehicleTransactionHistory,
+    SlotBasicInfo,
 )
 from avcfastapi.core.database.sqlalchamey.core import SessionDep
 from avcfastapi.core.exception.authentication import ForbiddenException
@@ -200,6 +198,55 @@ class ParkingService(AbstractService):
     ) -> ParkingSlot:
         """Create a new parking slot (pending verification)"""
         
+        # ISSUE 1 FIX: Validate pricing configuration based on pricing model
+        if slot_data.pricing_model == PricingModel.HOURLY:
+            if not slot_data.pricing_config:
+                raise InvalidRequestException(
+                    "Missing pricing configuration for HOURLY model",
+                    error_code="MISSING_PRICING_CONFIG"
+                )
+            
+            # Validate HOURLY config has all required vehicle types from capacity
+            for vehicle_type in slot_data.capacity.keys():
+                if vehicle_type not in slot_data.pricing_config:
+                    raise InvalidRequestException(
+                        f"Missing pricing configuration for vehicle type: {vehicle_type}",
+                        error_code="INCOMPLETE_PRICING_CONFIG"
+                    )
+                
+                config = slot_data.pricing_config[vehicle_type]
+                if not isinstance(config, dict):
+                    raise InvalidRequestException(
+                        f"Invalid pricing configuration for {vehicle_type}",
+                        error_code="INVALID_PRICING_CONFIG"
+                    )
+                
+                required_fields = {'base', 'base_hours', 'incremental'}
+                if not required_fields.issubset(config.keys()):
+                    raise InvalidRequestException(
+                        f"Missing required fields in HOURLY config for {vehicle_type}: {required_fields}",
+                        error_code="INCOMPLETE_HOURLY_CONFIG"
+                    )
+        
+        elif slot_data.pricing_model == PricingModel.FIXED:
+            if not slot_data.pricing_config:
+                raise InvalidRequestException(
+                    "Missing pricing configuration for FIXED model",
+                    error_code="MISSING_PRICING_CONFIG"
+                )
+            
+            # Validate FIXED config has all required vehicle types
+            for vehicle_type in slot_data.capacity.keys():
+                if vehicle_type not in slot_data.pricing_config:
+                    raise InvalidRequestException(
+                        f"Missing price for vehicle type: {vehicle_type}",
+                        error_code="INCOMPLETE_PRICING_CONFIG"
+                    )
+        
+        elif slot_data.pricing_model == PricingModel.FREE:
+            # FREE doesn't need config
+            slot_data.pricing_config = {}
+        
         # Create slot
         slot = ParkingSlot(
             owner_id=user_id,
@@ -264,6 +311,42 @@ class ParkingService(AbstractService):
         query = query.offset(offset).limit(limit).order_by(ParkingSlot.created_at.desc())
         result = await self.session.execute(query)
         slots = result.scalars().all()
+        
+        return list(slots), total
+
+    # ISSUE 4 FIX: New method for staff to list their assigned slots
+    async def list_staff_slots(
+        self,
+        user_id: UUID,
+        status: Optional[SlotStatus] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> Tuple[List[ParkingSlot], int]:
+        """List parking slots where user is staff (including owned slots)"""
+        
+        # Query for slots where user is staff (includes owner role)
+        query = (
+            select(ParkingSlot)
+            .join(ParkingSlotStaff, ParkingSlot.id == ParkingSlotStaff.slot_id)
+            .where(
+                ParkingSlotStaff.user_id == user_id,
+                ParkingSlot.deleted_at.is_(None)
+            )
+        )
+        
+        if status:
+            query = query.where(ParkingSlot.status == status)
+        
+        # Get total count
+        count_result = await self.session.execute(
+            select(func.count()).select_from(query.subquery())
+        )
+        total = count_result.scalar_one()
+        
+        # Get paginated results
+        query = query.offset(offset).limit(limit).order_by(ParkingSlot.created_at.desc())
+        result = await self.session.execute(query)
+        slots = result.unique().scalars().all()
         
         return list(slots), total
 
@@ -357,7 +440,12 @@ class ParkingService(AbstractService):
     ) -> ParkingSlotStaff:
         """Add staff member to parking slot (owner only)"""
         slot = await self._verify_slot_owner(slot_id, owner_id)
-        
+                # ISSUE 2 FIX: Only allow adding staff to active slots
+        if slot.status != SlotStatus.ACTIVE:
+            raise InvalidRequestException(
+                "Can only add staff to active parking slots",
+                error_code="SLOT_NOT_ACTIVE"
+            )
         # Can't add owner as staff again
         if staff_data.user_id == owner_id:
             raise InvalidRequestException("Owner is already staff", error_code="OWNER_AS_STAFF")
@@ -398,7 +486,12 @@ class ParkingService(AbstractService):
         Validates that user exists in system before adding.
         """
         slot = await self._verify_slot_owner(slot_id, owner_id)
-        
+        # ISSUE 2 FIX: Only allow adding staff to active slots
+        if slot.status != SlotStatus.ACTIVE:
+            raise InvalidRequestException(
+                "Can only add staff to active parking slots",
+                error_code="SLOT_NOT_ACTIVE"
+            )
         # Check if user exists with this email
         user = await self._get_user_by_email(staff_data.email)
         
@@ -470,24 +563,45 @@ class ParkingService(AbstractService):
         
         return True
 
+    # ISSUE 3 FIX: Enhanced list_staff with user details
     async def list_staff(
         self,
         slot_id: UUID,
         user_id: UUID
-    ) -> List[ParkingSlotStaff]:
-        """List staff for parking slot (staff can view)"""
+    ) -> List[dict]:
+        """List staff for parking slot with user details (staff can view)"""
         await self._verify_slot_staff(slot_id, user_id)
         
+        from apps.api.user.models import User
+        
+        # Updated query to join with User table for email
         result = await self.session.execute(
-            select(ParkingSlotStaff)
+            select(
+                ParkingSlotStaff,
+                User.email,
+                User.name
+            )
+            .join(User, ParkingSlotStaff.user_id == User.id)
             .where(ParkingSlotStaff.slot_id == slot_id)
-            .options(joinedload(ParkingSlotStaff.user))
         )
         
-        return list(result.scalars().all())
-
+        # Build response with user details
+        staff_list = []
+        for staff, email, name in result:
+            staff_list.append({
+                'id': staff.id,
+                'slot_id': staff.slot_id,
+                'user_id': staff.user_id,
+                'role': staff.role,
+                'email': email,  # NEW
+                'name': name,    # NEW
+                'created_at': staff.created_at
+            })
+        
+        return staff_list
     # ===== Session Management =====
 
+    # ISSUE 6 FIX: Enhanced check-in with due blocking
     async def check_in_vehicle(
         self,
         slot_id: UUID,
@@ -495,8 +609,7 @@ class ParkingService(AbstractService):
         check_in_data: SessionCheckIn
     ) -> Tuple[ParkingSession, Optional[VehicleDue]]:
         """
-        ENHANCED: Check in a vehicle with automatic owner linking.
-        Links session to vehicle owner if vehicle is registered.
+        ENHANCED: Check in a vehicle with automatic owner linking and due blocking.
         """
         slot, staff_record = await self._verify_slot_staff(slot_id, staff_id)
         
@@ -504,7 +617,7 @@ class ParkingService(AbstractService):
         if slot.status != SlotStatus.ACTIVE:
             raise InvalidRequestException("Parking slot is not active", error_code="SLOT_NOT_ACTIVE")
         
-        # CRITICAL: Check if vehicle is already checked in anywhere
+        # Check if vehicle is already checked in anywhere
         existing_checkin = await self.session.execute(
             select(ParkingSession)
             .where(
@@ -515,7 +628,6 @@ class ParkingService(AbstractService):
         existing_session = existing_checkin.scalar_one_or_none()
         
         if existing_session:
-            # Get slot info for better error message
             existing_slot = await self.session.get(ParkingSlot, existing_session.slot_id)
             raise InvalidRequestException(
                 f"Vehicle {check_in_data.vehicle_number} is already checked in at {existing_slot.name}. "
@@ -533,13 +645,22 @@ class ParkingService(AbstractService):
                 error_code="CAPACITY_FULL"
             )
         
-        # Check for outstanding dues
+        # CRITICAL NEW CHECK: Block checkin if outstanding dues exist with same owner
         outstanding_due = await self._check_vehicle_dues(
             check_in_data.vehicle_number,
             slot.owner_id
         )
         
-        # NEW: Get vehicle owner ID if registered
+        if outstanding_due:
+            # Block the checkin - vehicle must pay dues first
+            raise InvalidRequestException(
+                f"Vehicle {check_in_data.vehicle_number} has outstanding dues of "
+                f"₹{outstanding_due.due_amount - outstanding_due.paid_amount:.2f}. "
+                f"Please pay the dues before checking in. Due ID: {outstanding_due.id}",
+                error_code="OUTSTANDING_DUES_BLOCK"
+            )
+        
+        # Get vehicle owner ID if registered
         vehicle_owner_id = await self._get_vehicle_owner_id(check_in_data.vehicle_number)
         
         # Create session with owner link
@@ -547,12 +668,12 @@ class ParkingService(AbstractService):
             slot_id=slot_id,
             vehicle_number=check_in_data.vehicle_number,
             vehicle_type=check_in_data.vehicle_type.value,
-            vehicle_owner_id=vehicle_owner_id,  # NEW: Auto-link to owner
+            vehicle_owner_id=vehicle_owner_id,
             checked_in_by=staff_id,
             check_in_time=datetime.now(timezone.utc),
             status=SessionStatus.CHECKED_IN,
-            calculated_fee=Decimal("0.00"),
             payment_status=PaymentStatus.PENDING,
+            calculated_fee=Decimal("0.00"),
             notes=check_in_data.notes
         )
         
@@ -560,17 +681,62 @@ class ParkingService(AbstractService):
         await self.session.commit()
         await self.session.refresh(session)
         
-        return session, outstanding_due
+        # Return session and None for due (since no due if checkin was allowed)
+        return session, None
 
-    async def calculate_checkout_fee(
+    # ISSUE 5 FIX: Calculate fee supporting vehicle number
+
+
+
+    # 1. First, add this helper method to get session by vehicle number:
+    async def get_active_session_by_vehicle(
         self,
-        session_id: UUID,
-        staff_id: UUID
+        slot_id: UUID,
+        vehicle_number: str
+    ) -> Optional[ParkingSession]:
+        """Get active session for a vehicle in a specific slot"""
+        import re
+        vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
+        
+        session = await self.session.scalar(
+            select(ParkingSession)
+            .where(
+                ParkingSession.slot_id == slot_id,
+                ParkingSession.vehicle_number == vehicle_number,
+                ParkingSession.status == SessionStatus.CHECKED_IN
+            )
+        )
+        return session
+
+    # 2. REPLACE the calculate_fee method (around line 720-724) with this:
+    async def calculate_fee(
+        self,
+        session_id: Optional[UUID] = None,
+        vehicle_number: Optional[str] = None,
+        slot_id: Optional[UUID] = None,
+        staff_id: UUID = None
     ) -> dict:
-        """Calculate parking fee for a session before checkout"""
-        session_obj = await self.session.get(ParkingSession, session_id)
-        if not session_obj:
-            raise InvalidRequestException("Session not found", error_code="SESSION_NOT_FOUND")
+        """Calculate parking fee - accepts either session_id or vehicle_number"""
+        
+        # Get the session object
+        if vehicle_number and slot_id:
+            # Support for vehicle number
+            session_obj = await self.get_active_session_by_vehicle(slot_id, vehicle_number)
+            if not session_obj:
+                raise InvalidRequestException(
+                    f"No active session found for vehicle {vehicle_number}",
+                    error_code="SESSION_NOT_FOUND"
+                )
+        elif session_id:
+            # Traditional way with session_id
+            session_obj = await self.session.get(ParkingSession, session_id)
+            if not session_obj:
+                raise InvalidRequestException("Session not found", error_code="SESSION_NOT_FOUND")
+        else:
+            raise InvalidRequestException(
+                "Provide either session_id or (vehicle_number and slot_id)",
+                error_code="INVALID_PARAMS"
+            )
         
         # Verify staff access
         await self._verify_slot_staff(session_obj.slot_id, staff_id)
@@ -578,10 +744,11 @@ class ParkingService(AbstractService):
         if session_obj.status != SessionStatus.CHECKED_IN:
             raise InvalidRequestException("Session is not checked in", error_code="NOT_CHECKED_IN")
         
-        # Get slot for fee calculation
+        # Get slot for pricing
         slot = await self.session.get(ParkingSlot, session_obj.slot_id)
         
         # Calculate fee
+        from datetime import datetime, timezone
         current_time = datetime.now(timezone.utc)
         calculated_fee = self._calculate_parking_fee(
             slot,
@@ -590,47 +757,24 @@ class ParkingService(AbstractService):
             current_time
         )
         
-        # Calculate duration
-        duration = current_time - session_obj.check_in_time
-        duration_hours = duration.total_seconds() / 3600
-        
-        # Prepare pricing details based on model
-        pricing_details = {
-            "pricing_model": slot.pricing_model,
-            "vehicle_type": session_obj.vehicle_type
-        }
-        
-        if slot.pricing_model == PricingModel.HOURLY:
-            vehicle_config = slot.pricing_config.get(session_obj.vehicle_type, {})
-            pricing_details.update({
-                "base_fee": vehicle_config.get("base", 0),
-                "base_hours": vehicle_config.get("base_hours", 0),
-                "incremental_fee": vehicle_config.get("incremental", 0),
-                "duration_hours": duration_hours
-            })
-        elif slot.pricing_model == PricingModel.FIXED:
-            pricing_details.update({
-                "fixed_fee": slot.pricing_config.get(session_obj.vehicle_type, 0)
-            })
-        
         return {
-            "session_id": session_obj.id,
-            "vehicle_number": session_obj.vehicle_number,
-            "vehicle_type": session_obj.vehicle_type,
-            "check_in_time": session_obj.check_in_time,
-            "current_time": current_time,
-            "duration_hours": round(duration_hours, 2),
-            "calculated_fee": calculated_fee,
-            "pricing_details": pricing_details
+            'session_id': session_obj.id,
+            'vehicle_number': session_obj.vehicle_number,
+            'vehicle_type': session_obj.vehicle_type,
+            'check_in_time': session_obj.check_in_time,
+            'current_time': current_time,
+            'duration_hours': (current_time - session_obj.check_in_time).total_seconds() / 3600,
+            'calculated_fee': float(calculated_fee),
+            'pricing_details': {
+                'model': slot.pricing_model,
+                'config': slot.pricing_config.get(session_obj.vehicle_type, {}) if slot.pricing_config else {}
+            }
         }
 
-    async def check_out_vehicle(
-        self,
-        session_id: UUID,
-        staff_id: UUID,
-        check_out_data: SessionCheckOut
-    ) -> ParkingSession:
-        """Check out a vehicle and collect payment"""
+    # 3. REPLACE the calculate_checkout_fee method (around line 770-773) with this:
+    async def calculate_checkout_fee(self, session_id: UUID, staff_id: UUID) -> dict:
+        """Legacy method for backward compatibility - just calls calculate_fee"""
+        # DON'T CALL calculate_fee back! Just use the same logic
         session_obj = await self.session.get(ParkingSession, session_id)
         if not session_obj:
             raise InvalidRequestException("Session not found", error_code="SESSION_NOT_FOUND")
@@ -641,11 +785,69 @@ class ParkingService(AbstractService):
         if session_obj.status != SessionStatus.CHECKED_IN:
             raise InvalidRequestException("Session is not checked in", error_code="NOT_CHECKED_IN")
         
-        # Get slot for fee calculation
+        # Get slot for pricing
         slot = await self.session.get(ParkingSlot, session_obj.slot_id)
         
-        # Calculate final fee
+        # Calculate fee
+        from datetime import datetime, timezone
+        current_time = datetime.now(timezone.utc)
+        calculated_fee = self._calculate_parking_fee(
+            slot,
+            session_obj.vehicle_type,
+            session_obj.check_in_time,
+            current_time
+        )
+        
+        return {
+            'session_id': session_obj.id,
+            'vehicle_number': session_obj.vehicle_number,
+            'vehicle_type': session_obj.vehicle_type,
+            'check_in_time': session_obj.check_in_time,
+            'current_time': current_time,
+            'duration_hours': (current_time - session_obj.check_in_time).total_seconds() / 3600,
+            'calculated_fee': float(calculated_fee),
+            'pricing_details': {
+                'model': slot.pricing_model,
+                'config': slot.pricing_config.get(session_obj.vehicle_type, {}) if slot.pricing_config else {}
+            }
+        }
+    async def check_out_vehicle(
+        self,
+        staff_id: UUID,
+        check_out_data: SessionCheckOut,
+        session_id: Optional[UUID] = None,
+        vehicle_number: Optional[str] = None,
+        slot_id: Optional[UUID] = None
+    ) -> ParkingSession:
+        """Check out a vehicle - accepts either session_id or vehicle_number"""
+        
+        if not session_id and not (vehicle_number and slot_id):
+            raise InvalidRequestException(
+                "Provide either session_id or (vehicle_number and slot_id)",
+                error_code="INVALID_PARAMS"
+            )
+        
+        if vehicle_number and slot_id:
+            session_obj = await self.get_active_session_by_vehicle(slot_id, vehicle_number)
+            if not session_obj:
+                raise InvalidRequestException(
+                    f"No active session found for vehicle {vehicle_number}",
+                    error_code="SESSION_NOT_FOUND"
+                )
+        else:
+            session_obj = await self.session.get(ParkingSession, session_id)
+            if not session_obj:
+                raise InvalidRequestException("Session not found", error_code="SESSION_NOT_FOUND")
+        
+        # Verify staff access
+        await self._verify_slot_staff(session_obj.slot_id, staff_id)
+        
+        if session_obj.status != SessionStatus.CHECKED_IN:
+            raise InvalidRequestException("Session is not checked in", error_code="NOT_CHECKED_IN")
+        
+        slot = await self.session.get(ParkingSlot, session_obj.slot_id)
         check_out_time = datetime.now(timezone.utc)
+        
         calculated_fee = self._calculate_parking_fee(
             slot,
             session_obj.vehicle_type,
@@ -661,7 +863,7 @@ class ParkingService(AbstractService):
         session_obj.payment_mode = check_out_data.payment_mode
         session_obj.status = SessionStatus.CHECKED_OUT
         
-        # Determine payment status
+        # Payment status logic
         if check_out_data.collected_fee >= calculated_fee:
             session_obj.payment_status = PaymentStatus.PAID
         elif check_out_data.collected_fee > 0:
@@ -676,16 +878,33 @@ class ParkingService(AbstractService):
         await self.session.refresh(session_obj)
         
         return session_obj
-
+    # ISSUE 5 FIX: Mark escaped supporting vehicle number
     async def mark_escaped(
         self,
-        session_id: UUID,
-        staff_id: UUID
+        staff_id: UUID,
+        session_id: Optional[UUID] = None,
+        vehicle_number: Optional[str] = None,
+        slot_id: Optional[UUID] = None
     ) -> Tuple[ParkingSession, VehicleDue]:
-        """Mark vehicle as escaped and create due record"""
-        session_obj = await self.session.get(ParkingSession, session_id)
-        if not session_obj:
-            raise InvalidRequestException("Session not found", error_code="SESSION_NOT_FOUND")
+        """Mark vehicle as escaped - accepts either session_id or vehicle_number"""
+        
+        if not session_id and not (vehicle_number and slot_id):
+            raise InvalidRequestException(
+                "Provide either session_id or (vehicle_number and slot_id)",
+                error_code="INVALID_PARAMS"
+            )
+        
+        if vehicle_number and slot_id:
+            session_obj = await self.get_active_session_by_vehicle(slot_id, vehicle_number)
+            if not session_obj:
+                raise InvalidRequestException(
+                    f"No active session found for vehicle {vehicle_number}",
+                    error_code="SESSION_NOT_FOUND"
+                )
+        else:
+            session_obj = await self.session.get(ParkingSession, session_id)
+            if not session_obj:
+                raise InvalidRequestException("Session not found", error_code="SESSION_NOT_FOUND")
         
         # Verify staff access
         slot, _ = await self._verify_slot_staff(session_obj.slot_id, staff_id)

@@ -123,6 +123,31 @@ async def list_my_slots(
     )
 
 
+@router.get("/staff/my-slots", description="List slots where I'm staff")
+async def list_my_staff_slots(
+    request: Request,
+    user: UserDependency,
+    parking_service: ParkingServiceDependency,
+    pagination: PaginationParams,
+    status: Optional[SlotStatus] = Query(None, description="Filter by status"),
+) -> PaginatedResponse[ParkingSlotResponse]:
+    """
+    List all parking slots where the current user is staff (including owned slots).
+    This includes slots where you are owner, staff, or volunteer.
+    """
+    slots, total = await parking_service.list_staff_slots(
+        user.id,
+        status=status,
+        limit=pagination.limit,
+        offset=pagination.offset
+    )
+    return paginated_response(
+        result=[ParkingSlotResponse.model_validate(s) for s in slots],
+        request=request,
+        schema=ParkingSlotResponse
+    )
+
+
 @router.get("/slot/{slot_id}", description="Get parking slot details")
 async def get_parking_slot(
     slot_id: UUID,
@@ -361,52 +386,85 @@ async def check_in_vehicle(
     return response
 
 
-@router.get("/session/{session_id}/calculate-fee", description="Calculate parking fee before checkout")
+@router.post("/session/calculate-fee", description="Calculate parking fee")
 async def calculate_parking_fee(
-    session_id: UUID,
     user: UserDependency,
     parking_service: ParkingServiceDependency,
+    session_id: Optional[UUID] = None,
+    vehicle_number: Optional[str] = Query(None, description="Vehicle number (alternative to session_id)"),
+    slot_id: Optional[UUID] = Query(None, description="Slot ID (required with vehicle_number)"),
 ) -> dict:
     """
     Calculate the parking fee for a checked-in vehicle before checkout.
+    
+    **Enhanced:** Now supports calculation by either:
+    - Session ID (traditional way)
+    - Vehicle number + Slot ID (new way for easier staff operations)
+    
     Shows current calculated fee based on time elapsed.
     Staff only.
     """
-    fee_calculation = await parking_service.calculate_checkout_fee(session_id, user.id)
+    fee_calculation = await parking_service.calculate_fee(
+        session_id=session_id,
+        vehicle_number=vehicle_number,
+        slot_id=slot_id,
+        staff_id=user.id
+    )
     return fee_calculation
 
 
-@router.post("/session/{session_id}/check-out", description="Check out a vehicle")
+@router.post("/session/check-out", description="Check out a vehicle")
 async def check_out_vehicle(
-    session_id: UUID,
     user: UserDependency,
     parking_service: ParkingServiceDependency,
     check_out_data: SessionCheckOut,
+    session_id: Optional[UUID] = None,
+    vehicle_number: Optional[str] = Query(None, description="Vehicle number (alternative to session_id)"),
+    slot_id: Optional[UUID] = Query(None, description="Slot ID (required with vehicle_number)"),
 ) -> SessionResponse:
     """
-    Check out a vehicle and calculate parking fees.
+    Check out a vehicle and collect payment.
+    
+    **Enhanced:** Now supports checkout by either:
+    - Session ID (traditional way)
+    - Vehicle number + Slot ID (new way for easier staff operations)
+    
     Staff only.
     """
     session = await parking_service.check_out_vehicle(
-        session_id,
-        user.id,
-        check_out_data
+        staff_id=user.id,
+        check_out_data=check_out_data,
+        session_id=session_id,
+        vehicle_number=vehicle_number,
+        slot_id=slot_id
     )
     return SessionResponse.model_validate(session)
 
 
-@router.post("/session/{session_id}/escape", description="Mark vehicle as escaped")
+@router.post("/session/escape", description="Mark vehicle as escaped")
 async def mark_vehicle_escaped(
-    session_id: UUID,
     user: UserDependency,
     parking_service: ParkingServiceDependency,
+    session_id: Optional[UUID] = None,
+    vehicle_number: Optional[str] = Query(None, description="Vehicle number (alternative to session_id)"),
+    slot_id: Optional[UUID] = Query(None, description="Slot ID (required with vehicle_number)"),
 ) -> dict:
     """
     Mark a vehicle as escaped (left without paying).
+    
+    **Enhanced:** Now supports marking escape by either:
+    - Session ID (traditional way)
+    - Vehicle number + Slot ID (new way for easier staff operations)
+    
     Creates a due record automatically.
     Staff only.
     """
-    session, due = await parking_service.mark_escaped(session_id, user.id)
+    session, due = await parking_service.mark_escaped(
+        staff_id=user.id,
+        session_id=session_id,
+        vehicle_number=vehicle_number,
+        slot_id=slot_id
+    )
     
     return {
         "session": SessionResponse.model_validate(session),
