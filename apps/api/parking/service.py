@@ -1420,78 +1420,79 @@ class ParkingService(AbstractService):
     # ===== Public Endpoints =====
 
     async def find_nearby_parking_slots(
-        self,
-        latitude: float,
-        longitude: float,
-        radius_km: float = 5.0,
-        limit: int = 20
-    ) -> List[Dict]:
-        """
-        Find active parking slots near a location with real-time availability.
-        Public endpoint - no authentication required.
-        
-        Uses Haversine formula to calculate distance.
-        """
-        
-        # Haversine formula for distance calculation
-        # Distance in kilometers
-        earth_radius_km = 6371
-        
-        # Convert degrees to radians for calculation
-        lat_rad = func.radians(latitude)
-        lon_rad = func.radians(longitude)
-        slot_lat_rad = func.radians(ParkingSlot.latitude)
-        slot_lon_rad = func.radians(ParkingSlot.longitude)
-        
-        # Haversine formula
-        dlat = slot_lat_rad - lat_rad
-        dlon = slot_lon_rad - lon_rad
-        
-        a = (func.sin(dlat / 2) ** 2 + 
-             func.cos(lat_rad) * func.cos(slot_lat_rad) * 
-             func.sin(dlon / 2) ** 2)
-        
-        c = 2 * func.asin(func.sqrt(a))
-        distance = earth_radius_km * c
-        
-        # Query active slots within radius
-        query = select(
-            ParkingSlot,
-            distance.label('distance_km')
-        ).where(
-            ParkingSlot.status == SlotStatus.ACTIVE,
-            ParkingSlot.deleted_at.is_(None),
-            distance <= radius_km
-        ).order_by(
-            distance
-        ).limit(limit)
-        
-        result = await self.session.execute(query)
-        slots_with_distance = result.all()
-        
-        # Build response with availability for each slot
-        nearby_slots = []
-        for slot, distance_km in slots_with_distance:
-            # Get real-time availability
-            availability = await self.get_slot_availability(slot.id)
+            self,
+            latitude: float,
+            longitude: float,
+            radius_km: float = 5.0,
+            limit: int = 20
+        ) -> List[Dict]:
+            """
+            Find active parking slots near a location with real-time availability.
+            Public endpoint - no authentication required.
             
-            nearby_slots.append({
-                "id": slot.id,
-                "name": slot.name,
-                "description": slot.description,
-                "location": slot.location,
-                "latitude": slot.latitude,
-                "longitude": slot.longitude,
-                "distance_km": round(float(distance_km), 2),
-                "capacity": slot.capacity,
-                "pricing_model": slot.pricing_model,
-                "pricing_config": slot.pricing_config,
-                "payment_timing": slot.payment_timing,
-                "availability": availability.available,
-                "occupancy_percentage": availability.occupancy_percentage
-            })
-        
-        return nearby_slots
+            Uses Haversine formula to calculate distance.
+            """
+            
+            # Haversine formula for distance calculation
+            # Distance in kilometers
+            earth_radius_km = 6371
+            
+            # Convert degrees to radians for calculation
+            lat_rad = func.radians(latitude)
+            lon_rad = func.radians(longitude)
+            slot_lat_rad = func.radians(ParkingSlot.latitude)
+            slot_lon_rad = func.radians(ParkingSlot.longitude)
+            
+            # Haversine formula
+            dlat = slot_lat_rad - lat_rad
+            dlon = slot_lon_rad - lon_rad
+            
+            # Use func.power() instead of ** operator
+            a = (func.power(func.sin(dlat / 2), 2) + 
+                func.cos(lat_rad) * func.cos(slot_lat_rad) * 
+                func.power(func.sin(dlon / 2), 2))
+            
+            c = 2 * func.asin(func.sqrt(a))
+            distance = earth_radius_km * c
+            
+            # Query active slots within radius
+            query = select(
+                ParkingSlot,
+                distance.label('distance_km')
+            ).where(
+                ParkingSlot.status == SlotStatus.ACTIVE,
+                ParkingSlot.deleted_at.is_(None),
+                distance <= radius_km
+            ).order_by(
+                distance
+            ).limit(limit)
+            
+            result = await self.session.execute(query)
+            slots_with_distance = result.all()
+            
+            # Build response with availability for each slot
+            nearby_slots = []
+            for slot, distance_km in slots_with_distance:
+                # Get real-time availability
+                availability = await self.get_slot_availability(slot.id)
+                
+                nearby_slots.append({
+                    "id": slot.id,
+                    "name": slot.name,
+                    "description": slot.description,
+                    "location": slot.location,
+                    "latitude": slot.latitude,
+                    "longitude": slot.longitude,
+                    "distance_km": round(float(distance_km), 2),
+                    "capacity": slot.capacity,
+                    "pricing_model": slot.pricing_model,
+                    "pricing_config": slot.pricing_config,
+                    "payment_timing": slot.payment_timing,
+                    "availability": availability.available,
+                    "occupancy_percentage": availability.occupancy_percentage
+                })
+            
+            return nearby_slots
 
 
 ParkingServiceDependency = Annotated[ParkingService, ParkingService.get_dependency()]
