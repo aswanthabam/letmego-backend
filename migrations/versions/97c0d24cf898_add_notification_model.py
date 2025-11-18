@@ -10,7 +10,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from avcfastapi.core.database.sqlalchamey import core
+from avcfastapi import core
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -50,13 +50,19 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("is_deleted", sa.Boolean(), nullable=False),
         sa.Column(
-            "deleted_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "deleted_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column(
-            "created_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "created_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "updated_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
             ["user_id"],
@@ -101,24 +107,36 @@ def upgrade() -> None:
         ),
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column(
-            "sent_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "sent_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "delivered_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "delivered_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column(
-            "seen_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "seen_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column("error_message", sa.String(), nullable=True),
         sa.Column("is_deleted", sa.Boolean(), nullable=False),
         sa.Column(
-            "deleted_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "deleted_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column(
-            "created_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "created_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "updated_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
             ["device_id"],

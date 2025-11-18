@@ -7,3 +7,4 @@ from apps.api.notification.models import *
 from apps.api.shop.models import *
 from apps.api.analytics.models import *
 from apps.api.apartment.models import *
+from apps.api.parking.models import *

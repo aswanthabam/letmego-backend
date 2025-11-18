@@ -10,7 +10,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from avcfastapi.core.database.sqlalchamey import core
+from avcfastapi import core
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -42,13 +42,19 @@ def upgrade() -> None:
         sa.Column("privacy_preference", sa.String(length=20), nullable=False),
         sa.Column("is_deleted", sa.Boolean(), nullable=False),
         sa.Column(
-            "deleted_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "deleted_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column(
-            "created_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "created_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "updated_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("uid"),
@@ -72,13 +78,19 @@ def upgrade() -> None:
         sa.Column("is_verified", sa.Boolean(), nullable=True),
         sa.Column("is_deleted", sa.Boolean(), nullable=False),
         sa.Column(
-            "deleted_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "deleted_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column(
-            "created_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "created_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "updated_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
             ["user_id"],
@@ -107,13 +119,19 @@ def upgrade() -> None:
         sa.Column("current_status", sa.String(length=50), nullable=False),
         sa.Column("is_deleted", sa.Boolean(), nullable=False),
         sa.Column(
-            "deleted_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "deleted_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column(
-            "created_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "created_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "updated_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
             ["user_id"],
@@ -144,13 +162,19 @@ def upgrade() -> None:
         sa.Column("replay_to_message_id", sa.UUID(), nullable=True),
         sa.Column("is_deleted", sa.Boolean(), nullable=False),
         sa.Column(
-            "deleted_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "deleted_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column(
-            "created_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "created_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "updated_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
             ["replay_to_message_id"],
@@ -185,13 +209,19 @@ def upgrade() -> None:
         ),
         sa.Column("is_deleted", sa.Boolean(), nullable=False),
         sa.Column(
-            "deleted_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "deleted_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column(
-            "created_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "created_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "updated_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
             ["report_id"],
@@ -216,10 +246,14 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=50), nullable=False),
         sa.Column("notes", sa.String(length=255), nullable=True),
         sa.Column(
-            "created_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "created_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "updated_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
             ["report_id"],
@@ -243,13 +277,19 @@ def upgrade() -> None:
         ),
         sa.Column("is_deleted", sa.Boolean(), nullable=False),
         sa.Column(
-            "deleted_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=True
+            "deleted_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=True,
         ),
         sa.Column(
-            "created_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "created_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", core.db.fields.TZAwareDateTime(timezone=True), nullable=False
+            "updated_at",
+            core.database.sqlalchamey.fields.TZAwareDateTime(timezone=True),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
             ["message_id"],
