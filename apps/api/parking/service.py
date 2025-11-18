@@ -38,6 +38,7 @@ from avcfastapi.core.database.sqlalchamey.core import SessionDep
 from avcfastapi.core.exception.authentication import ForbiddenException
 from avcfastapi.core.exception.request import InvalidRequestException
 from avcfastapi.core.fastapi.dependency.service_dependency import AbstractService
+from apps.api.parking.role_manager import ParkingRoleManager
 
 
 class ParkingService(AbstractService):
@@ -46,6 +47,7 @@ class ParkingService(AbstractService):
     def __init__(self, session: SessionDep, **kwargs):
         super().__init__(session=session, **kwargs)
         self.session = session
+        self.role_manager = ParkingRoleManager(session)
 
     # ===== Helper Methods =====
 
@@ -439,7 +441,12 @@ class ParkingService(AbstractService):
         staff_data: StaffAdd
     ) -> ParkingSlotStaff:
         """Add staff member to parking slot (owner only)"""
-        slot = await self._verify_slot_owner(slot_id, owner_id)
+        role = await self.role_manager.verify_owner_access(
+            user_id=owner_id,
+            slot_id=slot_id
+        )
+        slot = await self.session.get(ParkingSlot, slot_id)
+        #slot = await self._verify_slot_owner(slot_id, owner_id)
                 # ISSUE 2 FIX: Only allow adding staff to active slots
         if slot.status != SlotStatus.ACTIVE:
             raise InvalidRequestException(

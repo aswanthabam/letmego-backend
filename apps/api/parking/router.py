@@ -4,6 +4,7 @@ from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 from fastapi import APIRouter, Query, Request
+from apps.api.parking.service_enhanced import EnhancedParkingServiceDependency
 
 from apps.api.auth.dependency import UserDependency, AdminUserDependency
 from apps.api.parking.service import ParkingServiceDependency
@@ -242,18 +243,19 @@ async def verify_parking_slot(
 
 # ===== Staff Management Endpoints =====
 
-@router.post("/slot/{slot_id}/staff/add", description="Add staff member by UUID")
+@router.post("/slot/{slot_id}/staff/add")
 async def add_staff_member(
     slot_id: UUID,
     user: UserDependency,
-    parking_service: ParkingServiceDependency,
+    parking_service: EnhancedParkingServiceDependency,
     staff_data: StaffAdd,
-) -> StaffResponse:
-    """
-    Add a user as staff or volunteer to this parking slot using their UUID.
-    Owner only.
-    """
-    staff = await parking_service.add_staff(slot_id, user.id, staff_data)
+):
+    # Service method name makes role requirement clear
+    staff = await parking_service.add_staff_as_owner(
+        slot_id=slot_id,
+        user_id=user.id, 
+        staff_data=staff_data
+    )
     return StaffResponse.model_validate(staff)
 
 
@@ -745,6 +747,89 @@ async def get_analytics_dashboard(
         }
     }
 
+
+# In apps/api/parking/router.py:
+
+@router.get("/my-workplaces")
+async def get_my_workplaces(
+    user: UserDependency,
+    parking_service: EnhancedParkingServiceDependency,
+):
+    """
+    Show all slots where I have access, grouped by role.
+    Helps users understand their different contexts.
+    """
+    roles = await parking_service.role_manager.get_all_user_slot_roles(
+        user_id=user.id,
+        status_filter=SlotStatus.ACTIVE
+    )
+    
+    owned = [r for r in roles if r.is_owner]
+    staff = [r for r in roles if r.is_staff]
+    
+    return {
+        "owned_slots": [
+            {
+                "slot_id": r.slot_id,
+                "slot_name": r.slot_name,
+                "role": r.role.value,
+                "permissions": {
+                    "can_manage_staff": r.can_manage_staff,
+                    "can_check_in_out": r.can_check_in_out,
+                    "can_view_analytics": r.can_view_analytics
+                }
+            } for r in owned
+        ],
+        "staff_slots": [
+            {
+                "slot_id": r.slot_id,
+                "slot_name": r.slot_name,
+                "role": r.role.value,
+                "owner_id": r.slot_owner_id,
+                "permissions": {
+                    "can_manage_staff": r.can_manage_staff,
+                    "can_check_in_out": r.can_check_in_out,
+                    "can_view_analytics": r.can_view_analytics
+                }
+            } for r in staff
+        ],
+        "summary": {
+            "total_slots": len(roles),
+            "as_owner": len(owned),
+            "as_staff": len(staff)
+        }
+    }
+
+@router.get("/my-role/{slot_id}")
+async def get_my_role_in_slot(
+    slot_id: UUID,
+    user: UserDependency,
+    parking_service: EnhancedParkingServiceDependency,
+):
+    """
+    Check what role I have in a specific slot.
+    Useful for UI to show/hide features.
+    """
+    role = await parking_service.role_manager.get_user_role_for_slot(
+        user_id=user.id,
+        slot_id=slot_id
+    )
+    
+    if not role:
+        raise ForbiddenException("You don't have access to this parking slot")
+    
+    return {
+        "slot_id": role.slot_id,
+        "slot_name": role.slot_name,
+        "your_role": role.role.value,
+        "is_owner": role.is_owner,
+        "permissions": {
+            "can_manage_staff": role.can_manage_staff,
+            "can_check_in_out": role.can_check_in_out,
+            "can_collect_dues": role.can_collect_dues,
+            "can_view_analytics": role.can_view_analytics
+        }
+    }
 
 @router.get("/admin/analytics", description="Get master analytics")
 async def get_admin_analytics(
