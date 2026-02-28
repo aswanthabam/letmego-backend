@@ -28,6 +28,12 @@ class OrganizationRole(str, enum.Enum):
 class Organization(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     __tablename__ = "organizations"
 
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=sa.text("gen_random_uuid()"),
+        default=sa.text("gen_random_uuid()"),
+    )
     name = Column(String(200), nullable=False)
     type = Column(SQLEnum(OrganizationType), nullable=False, default=OrganizationType.PARKING_OPERATOR)
     status = Column(SQLEnum(OrganizationStatus), nullable=False, default=OrganizationStatus.ACTIVE)
@@ -40,6 +46,12 @@ class Organization(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
 class OrganizationMember(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     __tablename__ = "organization_members"
     
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=sa.text("gen_random_uuid()"),
+        default=sa.text("gen_random_uuid()"),
+    )
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     role = Column(SQLEnum(OrganizationRole), nullable=False, default=OrganizationRole.GROUND_STAFF)
