@@ -28,7 +28,7 @@ services:
       - "6002:8000"
     env_file: .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/ping"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/ping')"]
       interval: 10s
       timeout: 5s
       retries: 3
