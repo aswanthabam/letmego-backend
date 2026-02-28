@@ -35,7 +35,7 @@ async def run_backfill():
             if owner_id not in owner_org_map:
                 # Retrieve owner details to name the org
                 user = await session.get(User, owner_id)
-                org_name = f"{user.full_name or 'User'}'s Parking Operations"
+                org_name = f"{user.fullname or 'User'}'s Parking Operations"
                 
                 # Create the Organization
                 org = Organization(
@@ -78,7 +78,7 @@ async def run_backfill():
             
             if admin_id not in admin_org_map:
                 user = await session.get(User, admin_id)
-                org_name = f"{user.full_name or 'User'}'s Property Management"
+                org_name = f"{user.fullname or 'User'}'s Property Management"
                 
                 org = Organization(
                     name=org_name,
