@@ -1,6 +1,7 @@
 # apps/api/analytics/router.py
 
 from typing import Optional
+from uuid import UUID
 from datetime import datetime
 from fastapi import APIRouter, Request, Query
 
@@ -17,6 +18,7 @@ from apps.api.analytics.schema import (
     AnalyticsDashboardResponse
 )
 from apps.api.organization.service import OrganizationServiceDependency
+from apps.api.organization.models import OrganizationRole
 from avcfastapi.core.fastapi.response.models import MessageResponse
 from avcfastapi.core.fastapi.response.pagination import (
     PaginatedResponse,
@@ -24,6 +26,7 @@ from avcfastapi.core.fastapi.response.pagination import (
     paginated_response,
 )
 from avcfastapi.core.database.sqlalchamey.core import SessionDep
+from avcfastapi.core.exception.request import InvalidRequestException
 from sqlalchemy import select
 
 router = APIRouter(
@@ -128,6 +131,15 @@ async def get_cta_events(
 
 # ===== B2B SaaS Dashboard Endpoints =====
 
+
+async def _resolve_user_id(session: SessionDep, firebase_uid: str) -> UUID:
+    """Resolve a Firebase UID string to the internal User.id UUID."""
+    user = await session.scalar(select(User).where(User.uid == firebase_uid))
+    if not user:
+        raise InvalidRequestException("Authenticated user not found in database", error_code="USER_NOT_FOUND")
+    return user.id
+
+
 @router.get(
     "/organization/{organization_id}/revenue",
     response_model=RevenueAnalyticsResponse,
@@ -135,6 +147,7 @@ async def get_cta_events(
 )
 async def get_organization_revenue(
     organization_id: UUID,
+    session: SessionDep,
     auth: FirebaseAuthDependency,
     org_service: OrganizationServiceDependency,
     analytics_service: AnalyticsServiceDependency,
@@ -145,10 +158,17 @@ async def get_organization_revenue(
     Get revenue leakage, collected vs calculated totals, and a timeseries of earnings.
     User must have ORG_ADMIN or AREA_MANAGER role within the organization.
     """
-    # 1. Verify user has administrative access to this Organization
-    await org_service.verify_org_admin(org_id=organization_id, user_id=auth.uid)
+    # 1. Resolve Firebase UID → internal User UUID
+    user_id = await _resolve_user_id(session, auth.uid)
     
-    # 2. Fetch the metrics
+    # 2. Verify user has administrative access to this Organization
+    await org_service.verify_org_membership(
+        org_id=organization_id,
+        user_id=user_id,
+        allowed_roles=[OrganizationRole.ORG_ADMIN, OrganizationRole.AREA_MANAGER]
+    )
+    
+    # 3. Fetch the metrics
     data = await analytics_service.get_organization_revenue_analytics(
         organization_id=organization_id,
         start_date=start_date,
@@ -165,6 +185,7 @@ async def get_organization_revenue(
 )
 async def get_organization_occupancy(
     organization_id: UUID,
+    session: SessionDep,
     auth: FirebaseAuthDependency,
     org_service: OrganizationServiceDependency,
     analytics_service: AnalyticsServiceDependency,
@@ -175,10 +196,17 @@ async def get_organization_occupancy(
     Get parking yield, active sessions, and vehicle distribution over a timeframe.
     User must have ORG_ADMIN or AREA_MANAGER role within the organization.
     """
-    # 1. Verify user has administrative access to this Organization
-    await org_service.verify_org_admin(org_id=organization_id, user_id=auth.uid)
+    # 1. Resolve Firebase UID → internal User UUID
+    user_id = await _resolve_user_id(session, auth.uid)
     
-    # 2. Fetch the metrics
+    # 2. Verify user has administrative access to this Organization
+    await org_service.verify_org_membership(
+        org_id=organization_id,
+        user_id=user_id,
+        allowed_roles=[OrganizationRole.ORG_ADMIN, OrganizationRole.AREA_MANAGER]
+    )
+    
+    # 3. Fetch the metrics
     data = await analytics_service.get_organization_occupancy_analytics(
         organization_id=organization_id,
         start_date=start_date,

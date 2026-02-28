@@ -72,3 +72,5 @@ urllib3==2.5.0
 uvicorn==0.35.0
 pillow
 geoalchemy2>=0.14.0
+slowapi>=0.1.9
+shapely>=2.0.0

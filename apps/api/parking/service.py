@@ -1,5 +1,6 @@
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, update
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB
 from sqlalchemy.orm import joinedload, selectinload
 from typing import Annotated, Optional, List, Dict, Tuple
 from uuid import UUID
@@ -278,8 +279,16 @@ class ParkingService(AbstractService):
             pricing_model=slot_data.pricing_model,
             pricing_config=slot_data.pricing_config or {},
             payment_timing=slot_data.payment_timing,
-            status=SlotStatus.PENDING_VERIFICATION
+            status=SlotStatus.PENDING_VERIFICATION,
+            organization_id=getattr(slot_data, 'organization_id', None)
         )
+        
+        # Populate PostGIS geography column from lat/lng for spatial queries
+        if slot_data.latitude and slot_data.longitude:
+            from sqlalchemy import text
+            slot.location_geom = sa.func.ST_GeogFromText(
+                f'SRID=4326;POINT({slot_data.longitude} {slot_data.latitude})'
+            )
         
         self.session.add(slot)
         await self.session.flush()
@@ -672,10 +681,17 @@ class ParkingService(AbstractService):
                 error_code="CAPACITY_FULL"
             )
             
-        # Increment counter cache
-        current_occ = dict(slot.current_occupancy) if slot.current_occupancy else {"car": 0, "bike": 0, "truck": 0}
-        current_occ[vehicle_type_str] = current_occ.get(vehicle_type_str, 0) + 1
-        slot.current_occupancy = current_occ
+        # Atomic increment of counter cache using raw SQL to prevent race conditions
+        await self.session.execute(
+            sa.text(
+                "UPDATE parking_slots SET current_occupancy = jsonb_set("
+                "COALESCE(current_occupancy, '{\"car\": 0, \"bike\": 0, \"truck\": 0}'::jsonb), "
+                "ARRAY[:vtype], "
+                "(COALESCE((current_occupancy->>:vtype)::int, 0) + 1)::text::jsonb"
+                ") WHERE id = :slot_id"
+            ),
+            {"vtype": vehicle_type_str, "slot_id": str(slot_id)}
+        )
         
         # Block checkin if outstanding dues exist with same owner
         outstanding_due = await self._check_vehicle_dues(
@@ -798,44 +814,8 @@ class ParkingService(AbstractService):
 
     # 3. REPLACE the calculate_checkout_fee method (around line 770-773) with this:
     async def calculate_checkout_fee(self, session_id: UUID, staff_id: UUID) -> dict:
-        """Legacy method for backward compatibility - just calls calculate_fee"""
-        # DON'T CALL calculate_fee back! Just use the same logic
-        session_obj = await self.session.get(ParkingSession, session_id)
-        if not session_obj:
-            raise InvalidRequestException("Session not found", error_code="SESSION_NOT_FOUND")
-        
-        # Verify staff access
-        await self._verify_slot_staff(session_obj.slot_id, staff_id)
-        
-        if session_obj.status != SessionStatus.CHECKED_IN:
-            raise InvalidRequestException("Session is not checked in", error_code="NOT_CHECKED_IN")
-        
-        # Get slot for pricing
-        slot = await self.session.get(ParkingSlot, session_obj.slot_id)
-        
-        # Calculate fee
-        from datetime import datetime, timezone
-        current_time = datetime.now(timezone.utc)
-        calculated_fee = self._calculate_parking_fee(
-            slot,
-            session_obj.vehicle_type,
-            session_obj.check_in_time,
-            current_time
-        )
-        
-        return {
-            'session_id': session_obj.id,
-            'vehicle_number': session_obj.vehicle_number,
-            'vehicle_type': session_obj.vehicle_type,
-            'check_in_time': session_obj.check_in_time,
-            'current_time': current_time,
-            'duration_hours': (current_time - session_obj.check_in_time).total_seconds() / 3600,
-            'calculated_fee': float(calculated_fee),
-            'pricing_details': {
-                'model': slot.pricing_model,
-                'config': slot.pricing_config.get(session_obj.vehicle_type, {}) if slot.pricing_config else {}
-            }
-        }
+        """Legacy method for backward compatibility - delegates to calculate_fee."""
+        return await self.calculate_fee(session_id=session_id, staff_id=staff_id)
     async def check_out_vehicle(
         self,
         staff_id: UUID,
@@ -880,13 +860,18 @@ class ParkingService(AbstractService):
             check_out_time
         )
         
-        # Decrement counter cache
-        current_occ = dict(slot.current_occupancy) if slot.current_occupancy else {"car": 0, "bike": 0, "truck": 0}
+        # Atomic decrement of counter cache using raw SQL (prevents race conditions)
         vehicle_type_str = session_obj.vehicle_type
-        # Only decrement if greater than 0 to prevent negative occupancies from data races
-        if current_occ.get(vehicle_type_str, 0) > 0:
-            current_occ[vehicle_type_str] -= 1
-        slot.current_occupancy = current_occ
+        await self.session.execute(
+            sa.text(
+                "UPDATE parking_slots SET current_occupancy = jsonb_set("
+                "COALESCE(current_occupancy, '{\"car\": 0, \"bike\": 0, \"truck\": 0}'::jsonb), "
+                "ARRAY[:vtype], "
+                "GREATEST(COALESCE((current_occupancy->>:vtype)::int, 0) - 1, 0)::text::jsonb"
+                ") WHERE id = :slot_id"
+            ),
+            {"vtype": vehicle_type_str, "slot_id": str(session_obj.slot_id)}
+        )
         
         # Update session
         session_obj.check_out_time = check_out_time
@@ -954,12 +939,18 @@ class ParkingService(AbstractService):
             escape_time
         )
         
-        # Decrement counter cache (vehicle left)
-        current_occ = dict(slot.current_occupancy) if slot.current_occupancy else {"car": 0, "bike": 0, "truck": 0}
+        # Atomic decrement of counter cache using raw SQL (prevents race conditions)
         vehicle_type_str = session_obj.vehicle_type
-        if current_occ.get(vehicle_type_str, 0) > 0:
-            current_occ[vehicle_type_str] -= 1
-        slot.current_occupancy = current_occ
+        await self.session.execute(
+            sa.text(
+                "UPDATE parking_slots SET current_occupancy = jsonb_set("
+                "COALESCE(current_occupancy, '{\"car\": 0, \"bike\": 0, \"truck\": 0}'::jsonb), "
+                "ARRAY[:vtype], "
+                "GREATEST(COALESCE((current_occupancy->>:vtype)::int, 0) - 1, 0)::text::jsonb"
+                ") WHERE id = :slot_id"
+            ),
+            {"vtype": vehicle_type_str, "slot_id": str(session_obj.slot_id)}
+        )
         
         # Update session
         session_obj.check_out_time = escape_time
@@ -1494,11 +1485,20 @@ class ParkingService(AbstractService):
             result = await self.session.execute(query)
             slots_with_distance = result.all()
             
-            # Build response with availability for each slot
+            # Build response using counter cache (no N+1 queries)
             nearby_slots = []
             for slot, distance_meters in slots_with_distance:
-                # Get real-time availability
-                availability = await self.get_slot_availability(slot.id)
+                capacity = slot.capacity or {}
+                occupied = dict(slot.current_occupancy) if slot.current_occupancy else {"car": 0, "bike": 0, "truck": 0}
+                available = {}
+                total_capacity = 0
+                total_occupied = 0
+                for vt, max_count in capacity.items():
+                    current = occupied.get(vt, 0)
+                    available[vt] = max(max_count - current, 0)
+                    total_capacity += max_count
+                    total_occupied += current
+                occupancy_pct = round((total_occupied / total_capacity * 100), 2) if total_capacity > 0 else 0
                 
                 nearby_slots.append({
                     "id": slot.id,
@@ -1508,12 +1508,12 @@ class ParkingService(AbstractService):
                     "latitude": slot.latitude,
                     "longitude": slot.longitude,
                     "distance_km": round(float(distance_meters) / 1000, 2),
-                    "capacity": slot.capacity,
+                    "capacity": capacity,
                     "pricing_model": slot.pricing_model,
                     "pricing_config": slot.pricing_config,
                     "payment_timing": slot.payment_timing,
-                    "availability": availability.available,
-                    "occupancy_percentage": availability.occupancy_percentage
+                    "availability": available,
+                    "occupancy_percentage": occupancy_pct
                 })
             
             return nearby_slots
