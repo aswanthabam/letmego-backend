@@ -8,3 +8,4 @@ from apps.api.shop.models import *
 from apps.api.analytics.models import *
 from apps.api.apartment.models import *
 from apps.api.parking.models import *
+from apps.api.organization.models import *
