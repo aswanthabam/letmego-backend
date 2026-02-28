@@ -650,6 +650,16 @@ class ParkingService(AbstractService):
         if slot.status != SlotStatus.ACTIVE:
             raise InvalidRequestException("Parking slot is not active", error_code="SLOT_NOT_ACTIVE")
         
+        # Block operations if slot's organization is suspended
+        if slot.organization_id:
+            from apps.api.organization.models import Organization, OrganizationStatus
+            org = await self.session.get(Organization, slot.organization_id)
+            if org and org.status == OrganizationStatus.SUSPENDED:
+                raise InvalidRequestException(
+                    "Organization is suspended. Parking operations are disabled.",
+                    error_code="ORG_SUSPENDED"
+                )
+        
         # Normalize vehicle number for consistent lookups
         normalized_vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", check_in_data.vehicle_number).upper()
         

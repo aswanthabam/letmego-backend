@@ -322,6 +322,7 @@ class VehicleService(AbstractService):
     async def delete_vehicle(self, vehicle_id: UUID, user_id: UUID) -> bool:
         """
         Delete a vehicle record (soft delete by default).
+        Blocks deletion if vehicle is currently checked in at any parking slot.
 
         Args:
             session: AsyncSession database connection
@@ -340,6 +341,21 @@ class VehicleService(AbstractService):
 
         if existing_vehicle.user_id != user_id:
             raise ForbiddenException("Not authorized to perform this action")
+
+        # Block deletion if vehicle is currently checked in at any parking slot
+        from apps.api.parking.models import ParkingSession, SessionStatus
+        active_session = await self.session.scalar(
+            select(ParkingSession).where(
+                ParkingSession.vehicle_number == existing_vehicle.vehicle_number,
+                ParkingSession.status == SessionStatus.CHECKED_IN
+            )
+        )
+        if active_session:
+            raise InvalidRequestException(
+                "Cannot delete vehicle while it is checked in at a parking slot. "
+                "Please check out first.",
+                error_code="VEHICLE_CHECKED_IN"
+            )
 
         existing_vehicle.soft_delete()
         await self.session.commit()

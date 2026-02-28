@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import ORJSONResponse
 from pydantic import ValidationError
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, JSONResponse
 from sqlalchemy.exc import StatementError, IntegrityError
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -21,6 +21,9 @@ from avcfastapi.core.fastapi.app import create_app
 # Rate limiter: 60 requests/minute for authenticated, 30/min for public endpoints
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
+# Max upload size: 10MB
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+
 
 async def on_startup():
     print("Application Starting Up ...")
@@ -31,6 +34,18 @@ app = create_app(apps_dir="apps", on_startup=on_startup)
 # Attach rate limiter to app
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.middleware("http")
+async def limit_upload_size(request: Request, call_next):
+    """Reject uploads larger than MAX_UPLOAD_SIZE (10MB)."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_UPLOAD_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": "File too large. Maximum upload size is 10MB."}
+        )
+    return await call_next(request)
 
 
 @app.get("/api/ping", summary="Ping the API", tags=["Health Check"])

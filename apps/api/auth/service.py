@@ -34,8 +34,21 @@ class AuthService(AbstractService):
                 "Firebase UID is required for authentication."
             )
 
-        user = await self.session.scalar(select(User).where(User.uid == firebase_uid))
-        if not user:
+        # Check for existing user INCLUDING soft-deleted accounts
+        user = await self.session.scalar(
+            select(User).where(User.uid == firebase_uid)
+        )
+        
+        if user and user.deleted_at is not None:
+            # Restore soft-deleted account to preserve historical data
+            user.deleted_at = None
+            user.fullname = firebase_user.display_name or user.fullname
+            user.email = email or user.email
+            user.phone_number = phone_number or user.phone_number
+            user.email_verified = firebase_user.email_verified
+            await self.session.commit()
+            await self.session.refresh(user)
+        elif not user:
             user = User(
                 uid=firebase_uid,
                 fullname=firebase_user.display_name or "Unknown User",

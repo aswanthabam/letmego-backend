@@ -75,7 +75,20 @@ class UserService(AbstractService):
         return user
 
     async def delete_user(self, user_id: UUID):
+        """Soft-delete user and cascade to their vehicles."""
         user = await self.get_user_by_id(user_id)
+        
+        # Cascade soft-delete to user's vehicles
+        from apps.api.vehicle.models import Vehicle
+        vehicles = await self.session.scalars(
+            select(Vehicle).where(
+                Vehicle.user_id == user_id,
+                Vehicle.deleted_at.is_(None)
+            )
+        )
+        for vehicle in vehicles:
+            vehicle.soft_delete()
+        
         user.soft_delete()
         await self.session.commit()
         return user
