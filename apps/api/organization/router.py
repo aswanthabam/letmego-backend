@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from typing import List
 from uuid import UUID
 
-from avcfastapi.core.fastapi.dependency.authentication_dependency import AuthenticationDependency
+from apps.api.auth.dependency import UserDependency
 from avcfastapi.core.fastapi.response_models import SuccessResponse, PaginatedResponse
 
 from apps.api.organization.schema import (
@@ -21,11 +21,11 @@ router = APIRouter(prefix="/v1/organizations", tags=["Organizations"])
 @router.post("", response_model=SuccessResponse[OrganizationResponse])
 async def create_organization(
     data: OrganizationCreate,
-    auth: AuthenticationDependency,
+    auth: UserDependency,
     service: OrganizationServiceDependency
 ):
     """Create a new Multi-Tenant Organization"""
-    org = await service.create_organization(auth.user.id, data)
+    org = await service.create_organization(auth.id, data)
     return SuccessResponse(data=org, message="Organization created successfully")
 
 
@@ -33,9 +33,9 @@ async def create_organization(
 async def update_organization(
     org_id: UUID,
     data: OrganizationUpdate,
-    auth: AuthenticationDependency,
+    auth: UserDependency,
     service: OrganizationServiceDependency
 ):
     """Edit Organization details. Target user must be ORG_ADMIN."""
-    org = await service.update_organization(org_id, auth.user.id, data)
+    org = await service.update_organization(org_id, auth.id, data)
     return SuccessResponse(data=org, message="Organization updated successfully")
