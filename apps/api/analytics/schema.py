@@ -45,3 +45,33 @@ class CTAAnalyticsResponse(CustomBaseModel):
     total_events: int
     analytics_by_type: list[CTAAnalytics]
     date_range: Dict[str, Optional[datetime]]
+
+
+# ===== B2B SaaS Dashboard Analytics =====
+
+class TimeseriesDataPoint(CustomBaseModel):
+    date: str
+    amount: float
+
+
+class RevenueAnalyticsResponse(CustomBaseModel):
+    total_calculated: float
+    total_collected: float
+    total_leakage: float
+    leakage_percentage: float
+    timeseries: list[TimeseriesDataPoint]
+
+
+class OccupancyAnalyticsResponse(CustomBaseModel):
+    total_sessions: int
+    active_sessions: int
+    average_duration_hours: float
+    vehicle_type_breakdown: Dict[str, int]
+
+
+class AnalyticsDashboardResponse(CustomBaseModel):
+    organization_id: UUID
+    organization_name: str
+    date_range: Dict[str, datetime]
+    revenue: RevenueAnalyticsResponse
+    occupancy: OccupancyAnalyticsResponse

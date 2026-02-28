@@ -29,9 +29,13 @@ class Apartment(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         nullable=False,
         index=True
     )  # Reference to the apartment admin user
+    
+    # NEW: Multi-tenant Organization ID
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Relationships
     admin = relationship("User", foreign_keys=[admin_id])
+    organization = relationship("Organization", foreign_keys=[organization_id])
     permitted_vehicles = relationship(
         "ApartmentPermittedVehicle",
         back_populates="apartment",

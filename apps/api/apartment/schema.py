@@ -19,6 +19,9 @@ class ApartmentBase(CustomBaseModel):
 class ApartmentCreate(ApartmentBase):
     """Schema for creating a new apartment (by super admin)"""
     admin_id: UUID = Field(..., description="UUID of the user who will be the apartment admin")
+    
+    # NEW: Multi-tenant Organization ID
+    organization_id: Optional[UUID] = Field(None, description="The B2B tenant organization that manages this property")
 
 
 class ApartmentUpdate(CustomBaseModel):

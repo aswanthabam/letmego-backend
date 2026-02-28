@@ -115,13 +115,30 @@ class ApartmentService(AbstractService):
         await self.session.commit()
         return True
 
-    def verify_apartment_admin(self, apartment: Apartment, user_id: UUID):
-        """Verify that the user is the admin of the apartment."""
-        if apartment.admin_id != user_id:
-            raise ForbiddenException(
-                "You are not authorized to manage this apartment",
-                error_code="NOT_APARTMENT_ADMIN",
+    async def verify_apartment_admin(self, apartment: Apartment, user_id: UUID):
+        """Verify that the user is the admin of the apartment via Organization or Legacy."""
+        if apartment.organization_id:
+            from apps.api.organization.models import OrganizationMember, OrganizationRole
+            member = await self.session.scalar(
+                select(OrganizationMember).where(
+                    OrganizationMember.organization_id == apartment.organization_id,
+                    OrganizationMember.user_id == user_id,
+                    OrganizationMember.role.in_([OrganizationRole.ORG_ADMIN, OrganizationRole.AREA_MANAGER]),
+                    OrganizationMember.deleted_at.is_(None)
+                )
             )
+            if not member:
+                raise ForbiddenException(
+                    "You must be an Organization Admin or Area Manager to manage this apartment",
+                    error_code="INSUFFICIENT_ORG_ROLE"
+                )
+        else:
+            # Fallback legacy check
+            if apartment.admin_id != user_id:
+                raise ForbiddenException(
+                    "You are not authorized to manage this apartment",
+                    error_code="NOT_APARTMENT_ADMIN",
+                )
 
     # ===== Permitted Vehicle Management =====
 
@@ -142,7 +159,7 @@ class ApartmentService(AbstractService):
                 error_code="APARTMENT_NOT_FOUND",
             )
 
-        self.verify_apartment_admin(apartment, admin_id)
+        await self.verify_apartment_admin(apartment, admin_id)
 
         # Verify vehicle exists and is not soft-deleted
         vehicle_result = await self.session.execute(
@@ -193,7 +210,7 @@ class ApartmentService(AbstractService):
                 error_code="APARTMENT_NOT_FOUND",
             )
 
-        self.verify_apartment_admin(apartment, admin_id)
+        await self.verify_apartment_admin(apartment, admin_id)
 
         # Find and delete the permitted vehicle record
         result = await self.session.execute(
@@ -234,7 +251,7 @@ class ApartmentService(AbstractService):
                 error_code="APARTMENT_NOT_FOUND",
             )
 
-        self.verify_apartment_admin(apartment, admin_id)
+        await self.verify_apartment_admin(apartment, admin_id)
 
         result = await self.session.execute(
             select(ApartmentPermittedVehicle)

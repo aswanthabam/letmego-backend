@@ -70,4 +70,4 @@ typing_extensions==4.14.0
 uritemplate==4.2.0
 urllib3==2.5.0
 uvicorn==0.35.0
-pillow
+pillowgeoalchemy2>=0.14.0

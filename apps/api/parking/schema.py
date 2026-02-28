@@ -19,6 +19,32 @@ from apps.api.parking.models import (
 from avcfastapi.core.fastapi.response.models import CustomBaseModel
 
 
+# ===== Pricing & Capacity Sub-Schemas =====
+
+class CapacityConfig(CustomBaseModel):
+    car: int = Field(0, ge=0, description="Parking capacity for cars")
+    bike: int = Field(0, ge=0, description="Parking capacity for bikes")
+    truck: int = Field(0, ge=0, description="Parking capacity for trucks")
+
+
+class HourlyTierConfig(CustomBaseModel):
+    base: float = Field(..., ge=0, description="Base fee amount")
+    base_hours: float = Field(..., gt=0, description="Number of hours covered by base fee")
+    incremental: float = Field(..., ge=0, description="Fee per additional hour")
+
+
+class HourlyPricingConfig(CustomBaseModel):
+    car: Optional[HourlyTierConfig] = None
+    bike: Optional[HourlyTierConfig] = None
+    truck: Optional[HourlyTierConfig] = None
+
+
+class FixedPricingConfig(CustomBaseModel):
+    car: Optional[float] = Field(None, ge=0)
+    bike: Optional[float] = Field(None, ge=0)
+    truck: Optional[float] = Field(None, ge=0)
+
+
 # ===== Parking Slot Schemas =====
 
 class ParkingSlotCreate(CustomBaseModel):
@@ -28,11 +54,12 @@ class ParkingSlotCreate(CustomBaseModel):
     location: str = Field(..., min_length=1, max_length=500, description="Physical address")
     latitude: float = Field(..., ge=-90, le=90, description="Latitude")
     longitude: float = Field(..., ge=-180, le=180, description="Longitude")
-    capacity: Dict[str, int] = Field(
-        ...,
-        description="Capacity by vehicle type",
-        example={"car": 20, "bike": 10, "truck": 5}
-    )
+    
+    # NEW: Multi-tenant Organization ID
+    organization_id: Optional[UUID] = Field(None, description="The B2B tenant organization that owns this slot")
+    
+    capacity: CapacityConfig = Field(..., description="Capacity by vehicle type")
+    
     pricing_model: PricingModel = Field(..., description="Pricing model to use")
     pricing_config: Optional[Dict] = Field(
         None,
@@ -44,47 +71,26 @@ class ParkingSlotCreate(CustomBaseModel):
         description="When payment is collected"
     )
 
-    @field_validator('capacity')
-    def validate_capacity(cls, v):
-        """Validate capacity has valid vehicle types and positive values"""
-        valid_types = {vt.value for vt in ParkingVehicleType}
-        for vehicle_type, count in v.items():
-            if vehicle_type not in valid_types:
-                raise ValueError(f"Invalid vehicle type: {vehicle_type}. Must be one of {valid_types}")
-            if count < 0:
-                raise ValueError(f"Capacity for {vehicle_type} must be non-negative")
-        return v
-
     @field_validator('pricing_config')
     def validate_pricing_config(cls, v, info):
-        """Validate pricing config matches pricing model"""
+        """Validate pricing config matches pricing model using explicit schemas"""
         if not v:
             return v
-        
+            
         model = info.data.get('pricing_model')
         
         if model == PricingModel.FREE:
             return {}
-        
+            
         if model == PricingModel.FIXED:
-            # Should be: {"car": 50, "bike": 20}
-            for vehicle_type, price in v.items():
-                if not isinstance(price, (int, float)) or price < 0:
-                    raise ValueError(f"Fixed price for {vehicle_type} must be non-negative number")
-        
+            # Pydantic will validate the dict layout
+            FixedPricingConfig(**v)
+            return v
+            
         if model == PricingModel.HOURLY:
-            # Should be: {"car": {"base": 30, "base_hours": 2, "incremental": 10}}
-            for vehicle_type, config in v.items():
-                if not isinstance(config, dict):
-                    raise ValueError(f"Hourly config for {vehicle_type} must be a dict")
-                required = {'base', 'base_hours', 'incremental'}
-                if not required.issubset(config.keys()):
-                    raise ValueError(f"Hourly config must have: {required}")
-                if config['base'] < 0 or config['incremental'] < 0:
-                    raise ValueError("Prices must be non-negative")
-                if config['base_hours'] <= 0:
-                    raise ValueError("Base hours must be positive")
-        
+            HourlyPricingConfig(**v)
+            return v
+            
         return v
 
 
@@ -95,23 +101,12 @@ class ParkingSlotUpdate(CustomBaseModel):
     location: Optional[str] = Field(None, min_length=1, max_length=500)
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
-    capacity: Optional[Dict[str, int]] = None
+    
+    capacity: Optional[CapacityConfig] = None
+    
     pricing_model: Optional[PricingModel] = None
     pricing_config: Optional[Dict] = None
     payment_timing: Optional[PaymentTiming] = None
-
-    @field_validator('capacity')
-    def validate_capacity(cls, v):
-        """Validate capacity has valid vehicle types and positive values"""
-        if v is None:
-            return v
-        valid_types = {vt.value for vt in ParkingVehicleType}
-        for vehicle_type, count in v.items():
-            if vehicle_type not in valid_types:
-                raise ValueError(f"Invalid vehicle type: {vehicle_type}. Must be one of {valid_types}")
-            if count < 0:
-                raise ValueError(f"Capacity for {vehicle_type} must be non-negative")
-        return v
 
     @field_validator('pricing_config')
     def validate_pricing_config(cls, v, info):
@@ -121,28 +116,18 @@ class ParkingSlotUpdate(CustomBaseModel):
         
         model = info.data.get('pricing_model')
         if not model:
-            # If pricing_model isn't being updated, skip deep validation
             return v
         
         if model == PricingModel.FREE:
             return {}
         
         if model == PricingModel.FIXED:
-            for vehicle_type, price in v.items():
-                if not isinstance(price, (int, float)) or price < 0:
-                    raise ValueError(f"Fixed price for {vehicle_type} must be non-negative number")
+            FixedPricingConfig(**v)
+            return v
         
         if model == PricingModel.HOURLY:
-            for vehicle_type, config in v.items():
-                if not isinstance(config, dict):
-                    raise ValueError(f"Hourly config for {vehicle_type} must be a dict")
-                required = {'base', 'base_hours', 'incremental'}
-                if not required.issubset(config.keys()):
-                    raise ValueError(f"Hourly config must have: {required}")
-                if config['base'] < 0 or config['incremental'] < 0:
-                    raise ValueError("Prices must be non-negative")
-                if config['base_hours'] <= 0:
-                    raise ValueError("Base hours must be positive")
+            HourlyPricingConfig(**v)
+            return v
         
         return v
 

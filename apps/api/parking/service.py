@@ -53,34 +53,61 @@ class ParkingService(AbstractService):
     # ===== Helper Methods =====
 
     async def _verify_slot_owner(self, slot_id: UUID, user_id: UUID) -> ParkingSlot:
-        """Verify user is owner of the slot"""
+        """Verify user has administrative access to the slot (Org Admin/Area Manager or Legacy Owner)"""
         slot = await self.session.get(ParkingSlot, slot_id)
         if not slot or slot.deleted_at is not None:
             raise InvalidRequestException("Parking slot not found", error_code="SLOT_NOT_FOUND")
         
-        if slot.owner_id != user_id:
-            raise ForbiddenException("You are not the owner of this parking slot")
+        if slot.organization_id:
+            from apps.api.organization.models import OrganizationMember, OrganizationRole
+            member = await self.session.scalar(
+                select(OrganizationMember).where(
+                    OrganizationMember.organization_id == slot.organization_id,
+                    OrganizationMember.user_id == user_id,
+                    OrganizationMember.role.in_([OrganizationRole.ORG_ADMIN, OrganizationRole.AREA_MANAGER]),
+                    OrganizationMember.deleted_at.is_(None)
+                )
+            )
+            if not member:
+                raise ForbiddenException("You must be an Organization Admin or Area Manager to manage this slot.")
+        else:
+            # Fallback to legacy check
+            if slot.owner_id != user_id:
+                raise ForbiddenException("You are not the owner of this parking slot.")
         
         return slot
 
-    async def _verify_slot_staff(self, slot_id: UUID, user_id: UUID) -> Tuple[ParkingSlot, ParkingSlotStaff]:
-        """Verify user is staff of the slot (including owner)"""
+    async def _verify_slot_staff(self, slot_id: UUID, user_id: UUID):
+        """Verify user is staff of the slot (via Organization or Legacy)"""
         slot = await self.session.get(ParkingSlot, slot_id)
         if not slot or slot.deleted_at is not None:
             raise InvalidRequestException("Parking slot not found", error_code="SLOT_NOT_FOUND")
         
-        # Check if user is staff
-        staff_record = await self.session.scalar(
-            select(ParkingSlotStaff).where(
-                ParkingSlotStaff.slot_id == slot_id,
-                ParkingSlotStaff.user_id == user_id
+        if slot.organization_id:
+            from apps.api.organization.models import OrganizationMember
+            member = await self.session.scalar(
+                select(OrganizationMember).where(
+                    OrganizationMember.organization_id == slot.organization_id,
+                    OrganizationMember.user_id == user_id,
+                    OrganizationMember.deleted_at.is_(None)
+                )
             )
-        )
-        
-        if not staff_record:
-            raise ForbiddenException("You are not authorized to manage this parking slot")
-        
-        return slot, staff_record
+            if not member:
+                raise ForbiddenException("You do not have staff access to this organization's slots.")
+            return slot, member
+        else:
+            # Fallback to legacy staff check
+            staff_record = await self.session.scalar(
+                select(ParkingSlotStaff).where(
+                    ParkingSlotStaff.slot_id == slot_id,
+                    ParkingSlotStaff.user_id == user_id
+                )
+            )
+            
+            if not staff_record and slot.owner_id != user_id:
+                raise ForbiddenException("You are not authorized to manage this parking slot.")
+            
+            return slot, staff_record
 
     def _calculate_parking_fee(
         self,
@@ -145,24 +172,13 @@ class ParkingService(AbstractService):
         return due
 
     async def _get_live_occupancy(self, slot_id: UUID) -> Dict[str, int]:
-        """Calculate current occupancy by vehicle type"""
+        """Calculate current occupancy by vehicle type from counter cache"""
         result = await self.session.execute(
-            select(
-                ParkingSession.vehicle_type,
-                func.count(ParkingSession.id)
-            )
-            .where(
-                ParkingSession.slot_id == slot_id,
-                ParkingSession.status == SessionStatus.CHECKED_IN
-            )
-            .group_by(ParkingSession.vehicle_type)
+            select(ParkingSlot.current_occupancy)
+            .where(ParkingSlot.id == slot_id)
         )
-        
-        occupancy = {}
-        for vehicle_type, count in result:
-            occupancy[vehicle_type] = count
-        
-        return occupancy
+        occupancy = result.scalar_one_or_none()
+        return occupancy or {"car": 0, "bike": 0, "truck": 0}
 
     # ===== NEW: User Management Helper =====
     
@@ -655,6 +671,11 @@ class ParkingService(AbstractService):
                 f"No capacity available for {vehicle_type_str}",
                 error_code="CAPACITY_FULL"
             )
+            
+        # Increment counter cache
+        current_occ = dict(slot.current_occupancy) if slot.current_occupancy else {"car": 0, "bike": 0, "truck": 0}
+        current_occ[vehicle_type_str] = current_occ.get(vehicle_type_str, 0) + 1
+        slot.current_occupancy = current_occ
         
         # Block checkin if outstanding dues exist with same owner
         outstanding_due = await self._check_vehicle_dues(
@@ -859,6 +880,14 @@ class ParkingService(AbstractService):
             check_out_time
         )
         
+        # Decrement counter cache
+        current_occ = dict(slot.current_occupancy) if slot.current_occupancy else {"car": 0, "bike": 0, "truck": 0}
+        vehicle_type_str = session_obj.vehicle_type
+        # Only decrement if greater than 0 to prevent negative occupancies from data races
+        if current_occ.get(vehicle_type_str, 0) > 0:
+            current_occ[vehicle_type_str] -= 1
+        slot.current_occupancy = current_occ
+        
         # Update session
         session_obj.check_out_time = check_out_time
         session_obj.checked_out_by = staff_id
@@ -924,6 +953,13 @@ class ParkingService(AbstractService):
             session_obj.check_in_time,
             escape_time
         )
+        
+        # Decrement counter cache (vehicle left)
+        current_occ = dict(slot.current_occupancy) if slot.current_occupancy else {"car": 0, "bike": 0, "truck": 0}
+        vehicle_type_str = session_obj.vehicle_type
+        if current_occ.get(vehicle_type_str, 0) > 0:
+            current_occ[vehicle_type_str] -= 1
+        slot.current_occupancy = current_occ
         
         # Update session
         session_obj.check_out_time = escape_time
@@ -1426,41 +1462,33 @@ class ParkingService(AbstractService):
             Find active parking slots near a location with real-time availability.
             Public endpoint - no authentication required.
             
-            Uses Haversine formula to calculate distance.
+            Uses PostGIS GiST spatial indexing for ultra-fast radius searches.
             """
             
-            # Haversine formula for distance calculation
-            # Distance in kilometers
-            earth_radius_km = 6371
+            # PostGIS works in meters for Geography columns
+            radius_meters = radius_km * 1000
             
-            # Convert degrees to radians for calculation
-            lat_rad = func.radians(latitude)
-            lon_rad = func.radians(longitude)
-            slot_lat_rad = func.radians(ParkingSlot.latitude)
-            slot_lon_rad = func.radians(ParkingSlot.longitude)
+            # Create a WKT string for the search point
+            search_point = f'SRID=4326;POINT({longitude} {latitude})'
             
-            # Haversine formula
-            dlat = slot_lat_rad - lat_rad
-            dlon = slot_lon_rad - lon_rad
-            
-            # Use func.power() instead of ** operator
-            a = (func.power(func.sin(dlat / 2), 2) + 
-                func.cos(lat_rad) * func.cos(slot_lat_rad) * 
-                func.power(func.sin(dlon / 2), 2))
-            
-            c = 2 * func.asin(func.sqrt(a))
-            distance = earth_radius_km * c
-            
-            # Query active slots within radius
+            # Query active slots within radius using PostGIS ST_DWithin
+            # Calculate exact distance using ST_Distance
             query = select(
                 ParkingSlot,
-                distance.label('distance_km')
+                func.ST_Distance(
+                    ParkingSlot.location_geom,
+                    func.ST_GeogFromText(search_point)
+                ).label('distance_meters')
             ).where(
                 ParkingSlot.status == SlotStatus.ACTIVE,
                 ParkingSlot.deleted_at.is_(None),
-                distance <= radius_km
+                func.ST_DWithin(
+                    ParkingSlot.location_geom,
+                    func.ST_GeogFromText(search_point),
+                    radius_meters
+                )
             ).order_by(
-                distance
+                'distance_meters'
             ).limit(limit)
             
             result = await self.session.execute(query)
@@ -1468,7 +1496,7 @@ class ParkingService(AbstractService):
             
             # Build response with availability for each slot
             nearby_slots = []
-            for slot, distance_km in slots_with_distance:
+            for slot, distance_meters in slots_with_distance:
                 # Get real-time availability
                 availability = await self.get_slot_availability(slot.id)
                 
@@ -1479,7 +1507,7 @@ class ParkingService(AbstractService):
                     "location": slot.location,
                     "latitude": slot.latitude,
                     "longitude": slot.longitude,
-                    "distance_km": round(float(distance_km), 2),
+                    "distance_km": round(float(distance_meters) / 1000, 2),
                     "capacity": slot.capacity,
                     "pricing_model": slot.pricing_model,
                     "pricing_config": slot.pricing_config,

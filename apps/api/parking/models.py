@@ -4,6 +4,7 @@ from sqlalchemy import Column, String, Float, Numeric, Enum as SQLEnum, ForeignK
 import sqlalchemy as sa
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2 import Geography
 import enum
 
 from avcfastapi.core.database.sqlalchamey.base import AbstractSQLModel
@@ -103,12 +104,28 @@ class ParkingSlot(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     location = Column(String(500), nullable=False)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
+
+    # PostGIS Geography point (SRID 4326 for WGS 84 spatial reference)
+    location_geom = Column(
+        Geography(geometry_type='POINT', srid=4326),
+        nullable=True,
+        index=True,
+        comment="PostGIS spatial point for ultra-fast nearby queries"
+    )
     
-    # Capacity stored as JSON: {"car": 20, "bike": 10, "truck": 5}
     capacity = Column(
         JSONB,
         nullable=False,
         comment="Vehicle type capacity mapping"
+    )
+    
+    # Live tracker for counter caching
+    current_occupancy = Column(
+        JSONB,
+        nullable=False,
+        server_default='{"car": 0, "bike": 0, "truck": 0}',
+        default={"car": 0, "bike": 0, "truck": 0},
+        comment="Cached live occupancy mapping. Prevents expensive COUNT(*) queries."
     )
     
     # Pricing configuration
@@ -141,6 +158,9 @@ class ParkingSlot(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         index=True
     )
     
+    # NEW: Multi-tenant Organization ID
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True, comment="The B2B tenant organization that owns this slot")
+    
     # Admin verification details
     verified_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     verified_at = Column(TZAwareDateTime(timezone=True), nullable=True)
@@ -149,6 +169,7 @@ class ParkingSlot(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     # Relationships
     owner = relationship("User", foreign_keys=[owner_id])
     verifier = relationship("User", foreign_keys=[verified_by])
+    organization = relationship("Organization", foreign_keys=[organization_id]) # NEW
     staff = relationship("ParkingSlotStaff", back_populates="slot", cascade="all, delete-orphan")
     sessions = relationship("ParkingSession", back_populates="slot", cascade="all, delete-orphan")
 

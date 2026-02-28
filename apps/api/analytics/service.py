@@ -173,6 +173,129 @@ class AnalyticsService(AbstractService):
         events = result.scalars().all()
 
         return list(events), total
+        return list(events), total
+
+    # ===== B2B SaaS Dashboard Analytics =====
+    
+    async def get_organization_revenue_analytics(
+        self,
+        organization_id: UUID,
+        start_date: datetime,
+        end_date: datetime
+    ) -> Dict[str, Any]:
+        """
+        Calculate revenue, collected amounts, and true revenue leakage
+        for all slots within an organization over a given time frame.
+        """
+        from apps.api.parking.models import ParkingSession, PaymentStatus, ParkingSlot
+        
+        # 1. Join Sessions -> Slots to filter by Organization
+        query = (
+            select(
+                func.sum(ParkingSession.calculated_fee).label("total_calculated"),
+                func.sum(
+                    sa.case(
+                        (ParkingSession.payment_status == PaymentStatus.COMPLETED, ParkingSession.calculated_fee),
+                        else_=0
+                    )
+                ).label("total_collected"),
+                func.date(ParkingSession.check_out_time).label("date")
+            )
+            .join(ParkingSlot, ParkingSession.slot_id == ParkingSlot.id)
+            .where(
+                ParkingSlot.organization_id == organization_id,
+                ParkingSession.check_out_time != None,
+                ParkingSession.check_out_time >= start_date,
+                ParkingSession.check_out_time <= end_date,
+                ParkingSession.deleted_at.is_(None)
+            )
+            .group_by(func.date(ParkingSession.check_out_time))
+            .order_by(func.date(ParkingSession.check_out_time))
+        )
+        
+        result = await self.session.execute(query)
+        rows = result.all()
+        
+        total_calc = 0.0
+        total_coll = 0.0
+        timeseries = []
+        
+        for row in rows:
+            calc = float(row.total_calculated or 0)
+            coll = float(row.total_collected or 0)
+            
+            total_calc += calc
+            total_coll += coll
+            
+            timeseries.append({
+                "date": str(row.date),
+                "amount": coll
+            })
+            
+        leakage = total_calc - total_coll
+        leakage_pct = (leakage / total_calc * 100) if total_calc > 0 else 0.0
+        
+        return {
+            "total_calculated": total_calc,
+            "total_collected": total_coll,
+            "total_leakage": leakage,
+            "leakage_percentage": round(leakage_pct, 2),
+            "timeseries": timeseries
+        }
+        
+    async def get_organization_occupancy_analytics(
+        self,
+        organization_id: UUID,
+        start_date: datetime,
+        end_date: datetime
+    ) -> Dict[str, Any]:
+        """
+        Calculate parking yield and utilization metrics for the Dashboard.
+        """
+        from apps.api.parking.models import ParkingSession, ParkingSlot
+        
+        # Get total and completed sessions
+        base_query = (
+            select(ParkingSession)
+            .join(ParkingSlot, ParkingSession.slot_id == ParkingSlot.id)
+            .where(
+                ParkingSlot.organization_id == organization_id,
+                ParkingSession.check_in_time >= start_date,
+                ParkingSession.check_in_time <= end_date,
+                ParkingSession.deleted_at.is_(None)
+            )
+        )
+        
+        sessions_result = await self.session.execute(base_query)
+        sessions = sessions_result.scalars().all()
+        
+        total_sessions = len(sessions)
+        active_sessions = sum(1 for s in sessions if s.check_out_time is None)
+        
+        total_duration_seconds = 0
+        completed_count = 0
+        vehicle_breakdown = {}
+        
+        for s in sessions:
+            # Breakdown by vehicle type
+            v_type = s.vehicle_type.value if hasattr(s.vehicle_type, 'value') else str(s.vehicle_type)
+            vehicle_breakdown[v_type] = vehicle_breakdown.get(v_type, 0) + 1
+            
+            # Duration math
+            if s.check_out_time:
+                duration = (s.check_out_time - s.check_in_time).total_seconds()
+                total_duration_seconds += duration
+                completed_count += 1
+                
+        avg_duration_hours = (total_duration_seconds / completed_count / 3600) if completed_count > 0 else 0.0
+        
+        return {
+            "total_sessions": total_sessions,
+            "active_sessions": active_sessions,
+            "average_duration_hours": round(avg_duration_hours, 2),
+            "vehicle_type_breakdown": vehicle_breakdown
+        }
 
 
 AnalyticsServiceDependency = Annotated[AnalyticsService, AnalyticsService.get_dependency()]
+

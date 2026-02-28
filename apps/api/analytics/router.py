@@ -12,7 +12,11 @@ from apps.api.analytics.schema import (
     CTAEventCreate,
     CTAEventResponse,
     CTAAnalyticsResponse,
+    RevenueAnalyticsResponse,
+    OccupancyAnalyticsResponse,
+    AnalyticsDashboardResponse
 )
+from apps.api.organization.service import OrganizationServiceDependency
 from avcfastapi.core.fastapi.response.models import MessageResponse
 from avcfastapi.core.fastapi.response.pagination import (
     PaginatedResponse,
@@ -120,5 +124,65 @@ async def get_cta_events(
     return paginated_response(
         result=[CTAEventResponse.model_validate(event) for event in events],
         request=pagination.request,
-        schema=CTAEventResponse,
     )
+
+# ===== B2B SaaS Dashboard Endpoints =====
+
+@router.get(
+    "/organization/{organization_id}/revenue",
+    response_model=RevenueAnalyticsResponse,
+    description="Get revenue analytics for a specific organization"
+)
+async def get_organization_revenue(
+    organization_id: UUID,
+    auth: FirebaseAuthDependency,
+    org_service: OrganizationServiceDependency,
+    analytics_service: AnalyticsServiceDependency,
+    start_date: datetime = Query(..., description="Start date for the analytics period"),
+    end_date: datetime = Query(..., description="End date for the analytics period")
+) -> RevenueAnalyticsResponse:
+    """
+    Get revenue leakage, collected vs calculated totals, and a timeseries of earnings.
+    User must have ORG_ADMIN or AREA_MANAGER role within the organization.
+    """
+    # 1. Verify user has administrative access to this Organization
+    await org_service.verify_org_admin(org_id=organization_id, user_id=auth.uid)
+    
+    # 2. Fetch the metrics
+    data = await analytics_service.get_organization_revenue_analytics(
+        organization_id=organization_id,
+        start_date=start_date,
+        end_date=end_date
+    )
+    
+    return RevenueAnalyticsResponse(**data)
+
+
+@router.get(
+    "/organization/{organization_id}/occupancy",
+    response_model=OccupancyAnalyticsResponse,
+    description="Get occupancy and yield analytics for a specific organization"
+)
+async def get_organization_occupancy(
+    organization_id: UUID,
+    auth: FirebaseAuthDependency,
+    org_service: OrganizationServiceDependency,
+    analytics_service: AnalyticsServiceDependency,
+    start_date: datetime = Query(..., description="Start date for the analytics period"),
+    end_date: datetime = Query(..., description="End date for the analytics period")
+) -> OccupancyAnalyticsResponse:
+    """
+    Get parking yield, active sessions, and vehicle distribution over a timeframe.
+    User must have ORG_ADMIN or AREA_MANAGER role within the organization.
+    """
+    # 1. Verify user has administrative access to this Organization
+    await org_service.verify_org_admin(org_id=organization_id, user_id=auth.uid)
+    
+    # 2. Fetch the metrics
+    data = await analytics_service.get_organization_occupancy_analytics(
+        organization_id=organization_id,
+        start_date=start_date,
+        end_date=end_date
+    )
+    
+    return OccupancyAnalyticsResponse(**data)
