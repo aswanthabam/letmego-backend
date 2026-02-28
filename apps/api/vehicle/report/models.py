@@ -40,7 +40,6 @@ class VehicleReport(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
         server_default=report_number_seq.next_value(),
         unique=True,
         nullable=False,
-        primary_key=True,  # Optional: only if it's the PK
     )
     vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicles.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)

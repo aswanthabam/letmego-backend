@@ -1,4 +1,4 @@
-version: "1.1"
+version: "3.8"
 
 services:
   postgres:
@@ -8,9 +8,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "7433:5433"
+      - "7433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U "]
+      test: ["CMD-SHELL", "pg_isready -U admin -d letmego"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -19,17 +19,16 @@ services:
   backend:
     build: .
     container_name: letmego-backend-prod
-    volumes:
-      - ./:/backend
     command: >
-      uvicorn app:app
+      uvicorn app:app --host 0.0.0.0 --port 8000 --workers 4
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "6002:8000"
     env_file: .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/ping"]
       interval: 10s
       timeout: 5s
       retries: 3

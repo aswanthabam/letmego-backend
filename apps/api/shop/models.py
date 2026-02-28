@@ -1,7 +1,8 @@
 # apps/api/shop/models.py
 
-from sqlalchemy import Column, String, Float, Text, UUID
+from sqlalchemy import Column, String, Float, Text, UUID, ForeignKey
 import sqlalchemy as sa
+from sqlalchemy.orm import relationship
 
 from avcfastapi.core.database.sqlalchamey.base import AbstractSQLModel
 from avcfastapi.core.database.sqlalchamey.mixins import SoftDeleteMixin, TimestampsMixin
@@ -30,3 +31,7 @@ class Shop(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     category = Column(String(100), nullable=True)  # e.g., Restaurant, Retail, Service, etc.
     operating_hours = Column(String(200), nullable=True)  # e.g., "Mon-Fri: 9AM-6PM"
     is_active = Column(sa.Boolean, default=True, nullable=False)
+    
+    # Owner relationship for access control
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    owner = relationship("User", foreign_keys=[user_id])

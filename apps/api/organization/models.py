@@ -58,6 +58,7 @@ class OrganizationMember(AbstractSQLModel, SoftDeleteMixin, TimestampsMixin):
     
     # Relationships
     organization = relationship("Organization", back_populates="members")
+    user = relationship("User", foreign_keys=[user_id])
 
     __table_args__ = (
         UniqueConstraint('organization_id', 'user_id', name='uq_org_member'),
