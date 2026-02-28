@@ -8,7 +8,7 @@ from typing import Optional
 
 from apps.api.user.schema import UserPrivacyWrapper
 
-from enum import Enum
+
 
 from apps.api.vehicle.report.schema import UserMin
 from avcfastapi.core.fastapi.response.models import CustomBaseModel
@@ -162,7 +162,7 @@ class VehicleResponseMin(CustomBaseModel):
         return v
 
 
-class CreateVehicleRequest(CustomBaseModel):
+class CreateVehicleRequest(VehicleValidatorMixin, CustomBaseModel):
     name: str | None = Field(None)
     vehicle_number: str = Field(
         ...,
@@ -174,7 +174,7 @@ class CreateVehicleRequest(CustomBaseModel):
     brand: str | None = Field(None)
 
 
-class UpdateVehicleRequest(CustomBaseModel):
+class UpdateVehicleRequest(VehicleValidatorMixin, CustomBaseModel):
     name: str | None = Field(None)
     vehicle_number: str = Field(
         ...,

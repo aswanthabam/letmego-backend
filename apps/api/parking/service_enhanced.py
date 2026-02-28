@@ -24,6 +24,7 @@ from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 import math
+import re
 
 from apps.api.parking.models import (
     ParkingSlot,
@@ -445,7 +446,7 @@ class EnhancedParkingService(AbstractService):
             session.status = SessionStatus.CHECKED_OUT
         elif checkout_data.collected_fee > 0:
             session.payment_status = PaymentStatus.PARTIAL
-            session.status = SessionStatus.ESCAPED
+            session.status = SessionStatus.CHECKED_OUT
             
             # Create due for remaining amount
             await self._create_vehicle_due(
@@ -655,7 +656,6 @@ class EnhancedParkingService(AbstractService):
     
     def _normalize_vehicle_number(self, vehicle_number: str) -> str:
         """Normalize vehicle number format"""
-        import re
         return re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
     
     async def _verify_capacity_available(
@@ -676,7 +676,7 @@ class EnhancedParkingService(AbstractService):
         current_count = await self.session.scalar(
             select(func.count(ParkingSession.id)).where(
                 ParkingSession.slot_id == slot.id,
-                ParkingSession.vehicle_type == vehicle_type,
+                ParkingSession.vehicle_type == vehicle_type.value,
                 ParkingSession.status == SessionStatus.CHECKED_IN
             )
         )
@@ -772,7 +772,7 @@ class EnhancedParkingService(AbstractService):
             )
             result = await self.session.execute(stmt)
             return result.scalar_one_or_none()
-        except Exception:
+        except ImportError:
             return None
     
     async def _calculate_slot_availability(

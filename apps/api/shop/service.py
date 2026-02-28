@@ -56,7 +56,7 @@ class ShopService(AbstractService):
         limit: int = 100,
         category: Optional[str] = None,
         is_active: Optional[bool] = None,
-    ) -> tuple[List[Shop], int]:
+    ) -> List[Shop]:
         """
         Get list of shops with optional filters.
 
@@ -67,7 +67,7 @@ class ShopService(AbstractService):
             is_active: Filter by active status
 
         Returns:
-            Tuple of (list of shops, total count)
+            List of shops
         """
         query = select(Shop).where(Shop.deleted_at.is_(None))
 
@@ -76,18 +76,12 @@ class ShopService(AbstractService):
         if is_active is not None:
             query = query.where(Shop.is_active == is_active)
 
-        # Get total count
-        count_result = await self.session.execute(
-            select(sa.func.count()).select_from(query.subquery())
-        )
-        total = count_result.scalar_one()
-
         # Get paginated results
         query = query.offset(skip).limit(limit).order_by(Shop.created_at.desc())
         result = await self.session.execute(query)
         shops = result.scalars().all()
 
-        return list(shops), total
+        return list(shops)
 
     async def update_shop(self, shop_id: UUID, shop_data: ShopUpdate) -> Shop:
         """

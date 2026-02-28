@@ -736,19 +736,18 @@ async def get_analytics_dashboard(
     Get analytics dashboard for slot owner.
     Shows revenue, sessions, and dues breakdown.
     Owner only.
+    
+    **Not yet implemented** — returns 501.
     """
-    # This endpoint would need additional service methods
-    # For now, returning a placeholder
-    return {
-        "message": "Analytics dashboard coming soon",
-        "date_range": {
-            "start_date": start_date,
-            "end_date": end_date
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=501,
+        content={
+            "detail": "Analytics dashboard not yet implemented",
+            "error_code": "NOT_IMPLEMENTED"
         }
-    }
+    )
 
-
-# In apps/api/parking/router.py:
 
 @router.get("/my-workplaces")
 async def get_my_workplaces(

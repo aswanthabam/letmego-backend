@@ -60,22 +60,17 @@ class ApartmentService(AbstractService):
 
     async def get_all_apartments(
         self, skip: int = 0, limit: int = 100
-    ) -> tuple[List[Apartment], int]:
+    ) -> List[Apartment]:
         """Get all apartments with pagination."""
-        query = select(Apartment).where(Apartment.deleted_at.is_(None))
-
-        # Get total count
-        count_result = await self.session.execute(
-            select(sa.func.count()).select_from(query.subquery())
+        query = (
+            select(Apartment)
+            .where(Apartment.deleted_at.is_(None))
+            .offset(skip)
+            .limit(limit)
+            .order_by(Apartment.created_at.desc())
         )
-        total = count_result.scalar_one()
-
-        # Get paginated results
-        query = query.offset(skip).limit(limit).order_by(Apartment.created_at.desc())
         result = await self.session.execute(query)
-        apartments = result.scalars().all()
-
-        return list(apartments), total
+        return list(result.scalars().all())
 
     async def update_apartment(
         self, apartment_id: UUID, apartment_data: ApartmentUpdate
@@ -89,6 +84,17 @@ class ApartmentService(AbstractService):
             )
 
         update_data = apartment_data.model_dump(exclude_unset=True)
+
+        # Validate new admin exists if admin_id is being changed
+        if 'admin_id' in update_data:
+            from apps.api.user.models import User
+            admin_user = await self.session.get(User, update_data['admin_id'])
+            if not admin_user or admin_user.deleted_at is not None:
+                raise InvalidRequestException(
+                    "Admin user not found",
+                    error_code="ADMIN_NOT_FOUND",
+                )
+
         for field, value in update_data.items():
             setattr(apartment, field, value)
 
@@ -138,9 +144,12 @@ class ApartmentService(AbstractService):
 
         self.verify_apartment_admin(apartment, admin_id)
 
-        # Verify vehicle exists
+        # Verify vehicle exists and is not soft-deleted
         vehicle_result = await self.session.execute(
-            select(Vehicle).where(Vehicle.id == vehicle_data.vehicle_id)
+            select(Vehicle).where(
+                Vehicle.id == vehicle_data.vehicle_id,
+                Vehicle.deleted_at.is_(None),
+            )
         )
         vehicle = vehicle_result.scalar_one_or_none()
         if not vehicle:
@@ -204,7 +213,7 @@ class ApartmentService(AbstractService):
                 error_code="PERMISSION_NOT_FOUND",
             )
 
-        await permitted_vehicle.delete(self.session)
+        permitted_vehicle.soft_delete()
         await self.session.commit()
         return True
 
@@ -229,7 +238,6 @@ class ApartmentService(AbstractService):
 
         result = await self.session.execute(
             select(ApartmentPermittedVehicle)
-            .options(joinedload(ApartmentPermittedVehicle.apartment))
             .where(
                 and_(
                     ApartmentPermittedVehicle.apartment_id == apartment_id,
@@ -240,17 +248,16 @@ class ApartmentService(AbstractService):
         )
         return result.scalar_one_or_none()
 
-    async def get_permitted_vehicles(
+    async def update_permitted_vehicle(
         self,
         apartment_id: UUID,
+        vehicle_id: UUID,
+        update_data: PermittedVehicleUpdate,
         admin_id: UUID,
-        skip: int = 0,
-        limit: int = 100,
-    ) -> tuple[List[ApartmentPermittedVehicle], int]:
+    ) -> ApartmentPermittedVehicle:
         """
-        Get all permitted vehicles for an apartment.
+        Update notes or parking spot for a permitted vehicle.
         """
-        # Verify apartment exists and user is admin
         apartment = await self.get_apartment(apartment_id)
         if not apartment:
             raise InvalidRequestException(
@@ -260,30 +267,65 @@ class ApartmentService(AbstractService):
 
         self.verify_apartment_admin(apartment, admin_id)
 
-        query = select(ApartmentPermittedVehicle).where(
-            and_(
-                ApartmentPermittedVehicle.apartment_id == apartment_id,
-                ApartmentPermittedVehicle.deleted_at.is_(None),
+        result = await self.session.execute(
+            select(ApartmentPermittedVehicle).where(
+                and_(
+                    ApartmentPermittedVehicle.apartment_id == apartment_id,
+                    ApartmentPermittedVehicle.vehicle_id == vehicle_id,
+                    ApartmentPermittedVehicle.deleted_at.is_(None),
+                )
             )
         )
+        permitted_vehicle = result.scalar_one_or_none()
 
-        # Get total count
-        count_result = await self.session.execute(
-            select(sa.func.count()).select_from(query.subquery())
-        )
-        total = count_result.scalar_one()
+        if not permitted_vehicle:
+            raise InvalidRequestException(
+                "Vehicle permission record not found",
+                error_code="PERMISSION_NOT_FOUND",
+            )
 
-        # Get paginated results
+        changes = update_data.model_dump(exclude_unset=True)
+        for field, value in changes.items():
+            setattr(permitted_vehicle, field, value)
+
+        await self.session.commit()
+        await self.session.refresh(permitted_vehicle)
+        return permitted_vehicle
+
+    async def get_permitted_vehicles(
+        self,
+        apartment_id: UUID,
+        admin_id: UUID,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> List[ApartmentPermittedVehicle]:
+        """
+        Get all permitted vehicles for an apartment.
+        """
+        apartment = await self.get_apartment(apartment_id)
+        if not apartment:
+            raise InvalidRequestException(
+                "Apartment not found",
+                error_code="APARTMENT_NOT_FOUND",
+            )
+
+        self.verify_apartment_admin(apartment, admin_id)
+
         query = (
-            query.options(joinedload(ApartmentPermittedVehicle.vehicle))
+            select(ApartmentPermittedVehicle)
+            .where(
+                and_(
+                    ApartmentPermittedVehicle.apartment_id == apartment_id,
+                    ApartmentPermittedVehicle.deleted_at.is_(None),
+                )
+            )
+            .options(joinedload(ApartmentPermittedVehicle.vehicle))
             .offset(skip)
             .limit(limit)
             .order_by(ApartmentPermittedVehicle.created_at.desc())
         )
         result = await self.session.execute(query)
-        vehicles = result.scalars().all()
-
-        return list(vehicles), total
+        return list(result.scalars().all())
 
 
 ApartmentServiceDependency = Annotated[

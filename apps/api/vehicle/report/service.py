@@ -1,4 +1,7 @@
+import logging
 import traceback
+
+logger = logging.getLogger(__name__)
 from typing import List, Optional
 from uuid import UUID
 from fastapi import UploadFile
@@ -53,7 +56,10 @@ class ReportService(AbstractService):
         """
         Fetches a vehicle by its vehicle number.
         """
-        query = select(Vehicle).where(Vehicle.vehicle_number == vehicle_number)
+        query = select(Vehicle).where(
+            Vehicle.vehicle_number == vehicle_number,
+            Vehicle.deleted_at.is_(None),
+        )
         result = await self.session.execute(query)
         vehicle = result.scalars().first()
         if not vehicle:
@@ -71,7 +77,10 @@ class ReportService(AbstractService):
         Raises:
             NotFoundException: If the vehicle does not exist.
         """
-        stmt = select(Vehicle).where(Vehicle.id == vehicle_id)
+        stmt = select(Vehicle).where(
+            Vehicle.id == vehicle_id,
+            Vehicle.deleted_at.is_(None),
+        )
         result = await self.session.execute(stmt)
         vehicle = result.scalars().first()
 
@@ -170,7 +179,7 @@ class ReportService(AbstractService):
         ):
             user_name = "Anonymous"
         else:
-            user_name = user.fullname or "Unkown User"
+            user_name = user.fullname or "Unknown User"
         notification_title = (
             f"{user_name} reported your vehicle {vehicle.vehicle_number}"
         )
@@ -196,10 +205,9 @@ class ReportService(AbstractService):
                     result = await self.notification_service.send_fcm_notification(
                         notification_id=notification.id, device_id=device.id
                     )
-                    print(f"Notification sent to device {device.id}: {result}")
+                    logger.info(f"Notification sent to device {device.id}: {result}")
         except Exception as e:
-            print(f"Failed to create notification: {e}")
-            traceback.print_exc()
+            logger.error(f"Failed to create notification: {e}", exc_info=True)
 
         return new_report
 
@@ -277,7 +285,7 @@ class ReportService(AbstractService):
                 "You do not have permission to update the status of this report."
             )
 
-        report.current_status = new_status
+        report.current_status = new_status.value
         report.is_closed = new_status.is_closed
 
         status_log = VehicleReportStatusLog(

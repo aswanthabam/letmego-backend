@@ -232,7 +232,6 @@ class ParkingSession(AbstractSQLModel, TimestampsMixin):
         index=True,
         comment="Owner of the vehicle (if registered in system)"
     )
-    vehicle_owner = relationship("User", foreign_keys=[vehicle_owner_id])
     checked_in_by = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id"),

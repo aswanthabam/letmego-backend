@@ -13,7 +13,9 @@ from avcfastapi.core.exception.authentication import ForbiddenException
 async def get_current_user(
     session: SessionDep, decoded_token: FirebaseAuthDependency
 ) -> User:
-    user = await session.scalar(select(User).where(User.uid == decoded_token.uid))
+    user = await session.scalar(
+        select(User).where(User.uid == decoded_token.uid, User.deleted_at.is_(None))
+    )
     if not user:
         raise ForbiddenException(
             "User not found or not authenticated.",
@@ -29,7 +31,6 @@ UserDependency = Annotated[User, Depends(get_current_user)]
 
 
 async def get_current_admin_user(user: UserDependency) -> User:
-    print(user.role)
     if not user or user.role != "admin":
         raise ForbiddenException(
             "user not found or not authenticated.",

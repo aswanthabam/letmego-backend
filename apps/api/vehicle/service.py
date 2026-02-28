@@ -167,7 +167,8 @@ class VehicleService(AbstractService):
         vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
 
         query = select(Vehicle).where(
-            Vehicle.vehicle_number.ilike(f"%{vehicle_number}%")
+            Vehicle.vehicle_number == vehicle_number,
+            Vehicle.deleted_at.is_(None),
         )
         if offset is not None:
             query = query.offset(offset)
@@ -370,12 +371,16 @@ class VehicleService(AbstractService):
             VehicleLocation: Created vehicle location instance
         """
         if is_valid_uuid(vehicle_number):
-            query = select(Vehicle).where(Vehicle.id == vehicle_number)
+            query = select(Vehicle).where(
+                Vehicle.id == vehicle_number,
+                Vehicle.deleted_at.is_(None),
+            )
         else:
             vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
             query = select(Vehicle).where(
                 and_(
                     Vehicle.vehicle_number.ilike(vehicle_number),
+                    Vehicle.deleted_at.is_(None),
                 )
             )
         vehicle = (await self.session.execute(query)).scalar()
@@ -459,9 +464,8 @@ class VehicleService(AbstractService):
         query = (
             select(VehicleLocation)
             .where(
-                or_(
-                    VehicleLocation.user_id == user_id,
-                )
+                VehicleLocation.user_id == user_id,
+                VehicleLocation.deleted_at.is_(None),
             )
             .options(
                 joinedload(VehicleLocation.vehicle).joinedload(Vehicle.owner),

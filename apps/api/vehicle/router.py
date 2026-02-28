@@ -16,6 +16,7 @@ from apps.api.vehicle.schema import (
     VehicleType,
     VehicleTypeResponse,
 )
+from avcfastapi.core.exception.request import InvalidRequestException
 from avcfastapi.core.fastapi.response.models import MessageResponse
 from avcfastapi.core.fastapi.response.pagination import (
     PaginatedResponse,
@@ -40,9 +41,9 @@ async def get_vehicle_types() -> List[VehicleTypeResponse]:
     ]
 
 
-@router.get("/fuel-types", description="Get all vehicle types")
-async def get_vehicle_types() -> List[VehicleTypeResponse]:
-    """Get all available vehicle types"""
+@router.get("/fuel-types", description="Get all fuel types")
+async def get_fuel_types() -> List[FuelTypeResponse]:
+    """Get all available fuel types"""
     return [
         FuelTypeResponse(value=vt.value, display_name=vt.display_text)
         for vt in FuelType
@@ -112,7 +113,7 @@ async def get_vehicle_endpoint(
     exception = None
     try:
         vehicle = await vehicle_service.get_vehicle(vehicle_number=id)
-    except Exception as e:
+    except InvalidRequestException as e:
         exception = e
         vehicle = None
     ip_address = await get_client_ip(request)

@@ -6,6 +6,7 @@ from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 import math
+import re
 
 from apps.api.parking.models import (
     ParkingSlot,
@@ -179,7 +180,7 @@ class ParkingService(AbstractService):
     async def _get_vehicle_owner_id(self, vehicle_number: str) -> Optional[UUID]:
         """Get vehicle owner ID from vehicles table if registered"""
         try:
-            from apps.api.vehicle.models import Vehicle  # Import Vehicle model
+            from apps.api.vehicle.models import Vehicle
             
             stmt = select(Vehicle.user_id).where(
                 Vehicle.vehicle_number == vehicle_number,
@@ -187,8 +188,8 @@ class ParkingService(AbstractService):
             )
             result = await self.session.execute(stmt)
             return result.scalar_one_or_none()
-        except Exception:
-            # If vehicle module not available, return None
+        except ImportError:
+            # Vehicle module not installed/available
             return None
 
     # ===== Parking Slot Management =====
@@ -624,11 +625,14 @@ class ParkingService(AbstractService):
         if slot.status != SlotStatus.ACTIVE:
             raise InvalidRequestException("Parking slot is not active", error_code="SLOT_NOT_ACTIVE")
         
+        # Normalize vehicle number for consistent lookups
+        normalized_vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", check_in_data.vehicle_number).upper()
+        
         # Check if vehicle is already checked in anywhere
         existing_checkin = await self.session.execute(
             select(ParkingSession)
             .where(
-                ParkingSession.vehicle_number == check_in_data.vehicle_number,
+                ParkingSession.vehicle_number == normalized_vehicle_number,
                 ParkingSession.status == SessionStatus.CHECKED_IN
             )
         )
@@ -652,9 +656,9 @@ class ParkingService(AbstractService):
                 error_code="CAPACITY_FULL"
             )
         
-        # CRITICAL NEW CHECK: Block checkin if outstanding dues exist with same owner
+        # Block checkin if outstanding dues exist with same owner
         outstanding_due = await self._check_vehicle_dues(
-            check_in_data.vehicle_number,
+            normalized_vehicle_number,
             slot.owner_id
         )
         
@@ -668,12 +672,12 @@ class ParkingService(AbstractService):
             )
         
         # Get vehicle owner ID if registered
-        vehicle_owner_id = await self._get_vehicle_owner_id(check_in_data.vehicle_number)
+        vehicle_owner_id = await self._get_vehicle_owner_id(normalized_vehicle_number)
         
-        # Create session with owner link
+        # Create session with normalized vehicle number
         session = ParkingSession(
             slot_id=slot_id,
-            vehicle_number=check_in_data.vehicle_number,
+            vehicle_number=normalized_vehicle_number,
             vehicle_type=check_in_data.vehicle_type.value,
             vehicle_owner_id=vehicle_owner_id,
             checked_in_by=staff_id,
@@ -691,18 +695,12 @@ class ParkingService(AbstractService):
         # Return session and None for due (since no due if checkin was allowed)
         return session, None
 
-    # ISSUE 5 FIX: Calculate fee supporting vehicle number
-
-
-
-    # 1. First, add this helper method to get session by vehicle number:
     async def get_active_session_by_vehicle(
         self,
         slot_id: UUID,
         vehicle_number: str
     ) -> Optional[ParkingSession]:
         """Get active session for a vehicle in a specific slot"""
-        import re
         vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
         
         session = await self.session.scalar(
@@ -715,7 +713,6 @@ class ParkingService(AbstractService):
         )
         return session
 
-    # 2. REPLACE the calculate_fee method (around line 720-724) with this:
     async def calculate_fee(
         self,
         session_id: Optional[UUID] = None,
@@ -1003,7 +1000,6 @@ class ParkingService(AbstractService):
             Complete transaction history with all sessions and dues
         """
         # Normalize vehicle number
-        import re
         vehicle_number = re.sub(r"[^a-zA-Z0-9]", "", vehicle_number).upper()
         
         # Check if vehicle is registered
@@ -1212,8 +1208,8 @@ class ParkingService(AbstractService):
                 "vehicles": vehicle_summaries
             }
             
-        except Exception as e:
-            # If vehicle module not available, return empty
+        except ImportError:
+            # Vehicle module not installed/available
             return {
                 "total_vehicles": 0,
                 "total_sessions": 0,

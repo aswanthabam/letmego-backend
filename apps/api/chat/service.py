@@ -93,7 +93,10 @@ class ChatService(AbstractService):
             select(ChatMessage)
             .options(joinedload(ChatMessage.replay_to_message))
             .options(selectinload(ChatMessage.attachments))
-            .where(ChatMessage.report_id == report_id)
+            .where(
+                ChatMessage.report_id == report_id,
+                ChatMessage.deleted_at.is_(None),
+            )
             .order_by(ChatMessage.created_at.desc())
         )
 
@@ -110,14 +113,12 @@ class ChatService(AbstractService):
         :param message_id: The ID of the message to delete.
         """
         stmt = select(ChatMessage).where(
-            ChatMessage.id == message_id, ChatMessage.user_id == user_id
+            ChatMessage.id == message_id,
+            ChatMessage.user_id == user_id,
+            ChatMessage.deleted_at.is_(None),
         )
         message = await self.session.scalar(stmt)
         if message:
-            if message.user_id != user_id:
-                raise ForbiddenException(
-                    "You do not have permission to delete this message."
-                )
             message.soft_delete()
             await self.session.commit()
             return True

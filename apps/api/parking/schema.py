@@ -100,6 +100,52 @@ class ParkingSlotUpdate(CustomBaseModel):
     pricing_config: Optional[Dict] = None
     payment_timing: Optional[PaymentTiming] = None
 
+    @field_validator('capacity')
+    def validate_capacity(cls, v):
+        """Validate capacity has valid vehicle types and positive values"""
+        if v is None:
+            return v
+        valid_types = {vt.value for vt in ParkingVehicleType}
+        for vehicle_type, count in v.items():
+            if vehicle_type not in valid_types:
+                raise ValueError(f"Invalid vehicle type: {vehicle_type}. Must be one of {valid_types}")
+            if count < 0:
+                raise ValueError(f"Capacity for {vehicle_type} must be non-negative")
+        return v
+
+    @field_validator('pricing_config')
+    def validate_pricing_config(cls, v, info):
+        """Validate pricing config matches pricing model when both are provided"""
+        if not v:
+            return v
+        
+        model = info.data.get('pricing_model')
+        if not model:
+            # If pricing_model isn't being updated, skip deep validation
+            return v
+        
+        if model == PricingModel.FREE:
+            return {}
+        
+        if model == PricingModel.FIXED:
+            for vehicle_type, price in v.items():
+                if not isinstance(price, (int, float)) or price < 0:
+                    raise ValueError(f"Fixed price for {vehicle_type} must be non-negative number")
+        
+        if model == PricingModel.HOURLY:
+            for vehicle_type, config in v.items():
+                if not isinstance(config, dict):
+                    raise ValueError(f"Hourly config for {vehicle_type} must be a dict")
+                required = {'base', 'base_hours', 'incremental'}
+                if not required.issubset(config.keys()):
+                    raise ValueError(f"Hourly config must have: {required}")
+                if config['base'] < 0 or config['incremental'] < 0:
+                    raise ValueError("Prices must be non-negative")
+                if config['base_hours'] <= 0:
+                    raise ValueError("Base hours must be positive")
+        
+        return v
+
 
 class ParkingSlotResponse(CustomBaseModel):
     """Schema for parking slot response"""

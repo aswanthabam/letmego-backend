@@ -56,7 +56,7 @@ async def get_all_apartments(
     Get paginated list of all apartments.
     Only accessible by super admin users.
     """
-    apartments, total = await apartment_service.get_all_apartments(
+    apartments = await apartment_service.get_all_apartments(
         skip=pagination.offset,
         limit=pagination.limit,
     )
@@ -202,15 +202,41 @@ async def check_vehicle_permission(
     )
 
     if permission:
+        # Use the apartment we already fetched (avoid redundant DB query)
+        apartment = await apartment_service.get_apartment(apartment_id)
         return VehiclePermissionCheckResponse(
             is_permitted=True,
             apartment_id=permission.apartment_id,
-            apartment_name=permission.apartment.name if permission.apartment else None,
+            apartment_name=apartment.name if apartment else None,
             parking_spot=permission.parking_spot,
             notes=permission.notes,
         )
     else:
         return VehiclePermissionCheckResponse(is_permitted=False)
+
+
+@router.put(
+    "/{apartment_id}/vehicles/{vehicle_id}",
+    description="Update permitted vehicle details",
+)
+async def update_permitted_vehicle(
+    apartment_admin: ApartmentAdminDependency,
+    apartment_service: ApartmentServiceDependency,
+    apartment_id: UUID,
+    vehicle_id: UUID,
+    update_data: PermittedVehicleUpdate,
+) -> PermittedVehicleResponse:
+    """
+    Update notes or parking spot for a permitted vehicle.
+    Only accessible by the apartment's admin.
+    """
+    permitted_vehicle = await apartment_service.update_permitted_vehicle(
+        apartment_id=apartment_id,
+        vehicle_id=vehicle_id,
+        update_data=update_data,
+        admin_id=apartment_admin.id,
+    )
+    return PermittedVehicleResponse.model_validate(permitted_vehicle)
 
 
 @router.get(
@@ -227,7 +253,7 @@ async def get_permitted_vehicles(
     Get paginated list of all vehicles permitted in the apartment's parking.
     Only accessible by the apartment's admin.
     """
-    vehicles, total = await apartment_service.get_permitted_vehicles(
+    vehicles = await apartment_service.get_permitted_vehicles(
         apartment_id=apartment_id,
         admin_id=apartment_admin.id,
         skip=pagination.offset,
