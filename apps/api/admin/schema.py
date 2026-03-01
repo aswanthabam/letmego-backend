@@ -142,3 +142,12 @@ class VehicleSearchLogResponse(CustomBaseModel):
     user: UserSchema | None = Field(None)
     created_at: datetime = Field(...)
     updated_at: datetime = Field(...)
+
+
+class UserRoleUpdate(CustomBaseModel):
+    role: str = Field(..., description="Role to assign to the user (e.g., admin, user)")
+
+
+class SlotStatusUpdate(CustomBaseModel):
+    status: str = Field(..., description="New status for the parking slot (e.g., active, inactive, suspended)")
+    reason: Optional[str] = Field(None, description="Optional reason for the status change")

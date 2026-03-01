@@ -7,6 +7,8 @@ from apps.api.admin.schema import (
     VehicleReportSchema,
     VehicleSearchLogResponse,
     VehicleWithCountsSchema,
+    UserSchema,
+    UserRoleUpdate,
 )
 from apps.api.admin.service import AdminDashboardServiceDependency
 from apps.api.auth.dependency import AdminUserDependency
@@ -155,3 +157,71 @@ async def list_search_logs(
     return paginated_response(
         result=search_logs, request=request, schema=VehicleSearchLogResponse
     )
+
+
+from apps.api.parking.schema import ParkingSlotResponse
+from apps.api.parking.models import SlotStatus
+
+@router.patch("/users/{user_id}/role", description="Change a user's role (Super Admin only)")
+async def update_user_role(
+    user_id: UUID,
+    role_update: UserRoleUpdate,
+    admin: AdminUserDependency,
+    admin_dashboard_service: AdminDashboardServiceDependency,
+) -> UserSchema:
+    """
+    Change the role of a user. (e.g. promote to admin or demote to user).
+    Only accessible by Super Admins.
+    """
+    updated_user = await admin_dashboard_service.update_user_role(user_id, role_update.role)
+    return UserSchema.model_validate(updated_user)
+
+
+@router.get("/slots", description="List all parking slots (Super Admin only)")
+async def list_all_slots(
+    admin: AdminUserDependency,
+    request: Request,
+    admin_dashboard_service: AdminDashboardServiceDependency,
+    params: PaginationParams,
+    status: SlotStatus | None = Query(None, description="Filter by status"),
+    from_date: datetime | None = Query(
+        None, description="Filter from this datetime (inclusive, timezone-aware)"
+    ),
+    to_date: datetime | None = Query(
+        None, description="Filter to this datetime (inclusive, timezone-aware)"
+    ),
+) -> PaginatedResponse[ParkingSlotResponse]:
+    slots = await admin_dashboard_service.list_all_slots(
+        offset=params.offset, limit=params.limit, status=status, from_date=from_date, to_date=to_date
+    )
+    return paginated_response(
+        result=slots, request=request, schema=ParkingSlotResponse
+    )
+
+
+@router.patch("/slots/{slot_id}/status", description="Update a parking slot's status (Super Admin only)")
+async def update_slot_status(
+    slot_id: UUID,
+    status_update: SlotStatusUpdate,
+    admin: AdminUserDependency,
+    admin_dashboard_service: AdminDashboardServiceDependency,
+) -> ParkingSlotResponse:
+    """
+    Change the status of a parking slot (e.g., approve, reject, suspend).
+    """
+    updated_slot = await admin_dashboard_service.update_slot_status(
+        slot_id, status_update.status, status_update.reason
+    )
+    return ParkingSlotResponse.model_validate(updated_slot)
+
+
+@router.get("/analytics/timeseries", description="Get timeseries analytics data (Super Admin only)")
+async def get_analytics_timeseries(
+    admin: AdminUserDependency,
+    admin_dashboard_service: AdminDashboardServiceDependency,
+    months: int = Query(6, description="Number of months to retrieve history for"),
+) -> dict:
+    """
+    Get monthly grouped statistics for charts (User Growth, Revenue, Sessions).
+    """
+    return await admin_dashboard_service.get_timeseries_analytics(months=months)

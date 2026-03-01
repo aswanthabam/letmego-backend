@@ -252,6 +252,130 @@ class AdminDashboardService(AbstractService):
         result = await self.session.execute(query)
         return result.scalar_one()
 
+    async def update_user_role(self, user_id: uuid.UUID, new_role: str) -> User:
+        user = await self.session.scalar(select(User).where(User.id == user_id))
+        from avcfastapi.core.exception.request import InvalidRequestException
+        if not user:
+            raise InvalidRequestException("User not found", error_code="USER_NOT_FOUND")
+        
+        user.role = new_role
+        self.session.add(user)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user
+
+    async def list_all_slots(
+        self,
+        offset: int = 0,
+        limit: int = 10,
+        status: Optional[str] = None,
+        from_date: Optional[datetime] = None,
+        to_date: Optional[datetime] = None,
+    ):
+        from apps.api.parking.models import ParkingSlot
+        query = select(ParkingSlot).order_by(ParkingSlot.created_at.desc())
+
+        date_cond = self._date_filter(ParkingSlot.created_at, from_date, to_date)
+        if date_cond is not None:
+            query = query.where(date_cond)
+
+        if status:
+            query = query.where(ParkingSlot.status == status)
+
+        query = query.offset(offset).limit(limit)
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
+    async def update_slot_status(self, slot_id: uuid.UUID, new_status: str, reason: Optional[str] = None):
+        from apps.api.parking.models import ParkingSlot, SlotStatusLog
+        from avcfastapi.core.exception.request import InvalidRequestException
+        
+        slot = await self.session.scalar(select(ParkingSlot).where(ParkingSlot.id == slot_id))
+        if not slot:
+            raise InvalidRequestException("Parking slot not found", error_code="SLOT_NOT_FOUND")
+        
+        old_status = slot.status
+        slot.status = new_status
+        
+            old_status=old_status,
+            new_status=new_status,
+            reason=reason or "Updated by Super Admin",
+            # changed_by_id=admin_id if available, but for now we skip or just add notes
+        )
+        self.session.add(log_entry)
+        self.session.add(slot)
+        await self.session.commit()
+        await self.session.refresh(slot)
+        return slot
+
+    async def get_timeseries_analytics(self, months: int = 6) -> dict:
+        """
+        Gathers month-by-month data for the admin chart showing:
+        - User Growth
+        - Revenue
+        - Sessions
+        """
+        from dateutil.relativedelta import relativedelta
+        from apps.api.parking.models import ParkingSession
+        
+        end_date = datetime.utcnow()
+        start_date = end_date - relativedelta(months=months - 1)
+        start_date = start_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # Generate month labels
+        labels = []
+        current_date = start_date
+        while current_date <= end_date.replace(day=1):
+            labels.append(current_date.strftime("%b %Y"))
+            current_date += relativedelta(months=1)
+
+        def _init_zero_dict():
+            return {label: 0 for label in labels}
+
+        user_growth = _init_zero_dict()
+        revenue = _init_zero_dict()
+        sessions_count = _init_zero_dict()
+
+        # 1. User Growth
+        user_query = select(User.created_at).where(User.created_at >= start_date)
+        user_result = await self.session.execute(user_query)
+        for row in user_result.scalars():
+            month_label = row.strftime("%b %Y")
+            if month_label in user_growth:
+                user_growth[month_label] += 1
+
+        # 2. Revenue & Sessions
+        session_query = select(
+            ParkingSession.check_in_time, 
+            ParkingSession.collected_fee
+        ).where(ParkingSession.check_in_time >= start_date)
+        session_result = await self.session.execute(session_query)
+        for check_in_time, collected_fee in session_result:
+            if not check_in_time:
+                continue
+            month_label = check_in_time.strftime("%b %Y")
+            if month_label in sessions_count:
+                sessions_count[month_label] += 1
+                revenue[month_label] += float(collected_fee or 0.0)
+
+        return {
+            "labels": labels,
+            "datasets": [
+                {
+                    "label": "User Growth",
+                    "data": [user_growth[label] for label in labels]
+                },
+                {
+                    "label": "Revenue",
+                    "data": [revenue[label] for label in labels]
+                },
+                {
+                    "label": "Sessions",
+                    "data": [sessions_count[label] for label in labels]
+                }
+            ]
+        }
+
 
 AdminDashboardServiceDependency = Annotated[
     AdminDashboardService, AdminDashboardService.get_dependency()
