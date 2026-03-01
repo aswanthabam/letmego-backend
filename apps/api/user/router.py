@@ -14,6 +14,16 @@ router = APIRouter(
     tags=["User"],
 )
 
+from apps.api.user.schema import UserStatsResponse
+
+@router.get("/stats", summary="Get user statistics")
+async def get_user_stats(
+    user: UserDependency,
+    user_service: UserServiceDependency,
+) -> UserStatsResponse:
+    stats = await user_service.get_user_stats(user_id=user.id)
+    return UserStatsResponse(**stats)
+
 
 @router.put("/update", summary="Update user details")
 async def update_user_details(

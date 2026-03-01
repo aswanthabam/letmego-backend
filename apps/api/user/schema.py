@@ -52,3 +52,8 @@ class UserDetailsResponse(CustomBaseModel):
     company_name: str | None = Field(None)
     privacy_preference: PrivacyPreference | None = Field(None)
     status: UserStatus | None = Field(None)
+
+class UserStatsResponse(CustomBaseModel):
+    vehicles_count: int = Field(0)
+    reports_count: int = Field(0)
+    sessions_count: int = Field(0)

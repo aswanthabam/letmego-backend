@@ -107,5 +107,31 @@ class UserService(AbstractService):
         await self.session.commit()
         return user
 
+    async def get_user_stats(self, user_id: UUID) -> dict:
+        from apps.api.vehicle.models import Vehicle
+        from apps.api.vehicle.report.models import VehicleReport
+        from apps.api.parking.models import ParkingSession
+        from sqlalchemy import func, select
+        
+        vehicles_count = await self.session.scalar(
+            select(func.count(Vehicle.id)).where(Vehicle.user_id == user_id, Vehicle.deleted_at.is_(None))
+        )
+        reports_by_me = await self.session.scalar(
+            select(func.count(VehicleReport.id)).where(VehicleReport.user_id == user_id, VehicleReport.deleted_at.is_(None))
+        )
+        reports_on_me = await self.session.scalar(
+            select(func.count(VehicleReport.id))
+            .join(Vehicle, VehicleReport.vehicle_id == Vehicle.id)
+            .where(Vehicle.user_id == user_id, VehicleReport.deleted_at.is_(None), Vehicle.deleted_at.is_(None))
+        )
+        sessions_count = await self.session.scalar(
+            select(func.count(ParkingSession.id)).where(ParkingSession.user_id == user_id, ParkingSession.deleted_at.is_(None))
+        )
+        
+        return {
+            "vehicles_count": vehicles_count or 0,
+            "reports_count": (reports_by_me or 0) + (reports_on_me or 0),
+            "sessions_count": sessions_count or 0,
+        }
 
 UserServiceDependency = Annotated[UserService, UserService.get_dependency()]
